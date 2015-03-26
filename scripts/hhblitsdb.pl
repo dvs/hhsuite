@@ -1,10 +1,10 @@
 #!/usr/bin/env perl
 #
 # hhblits.pl
-# Creates HHblits database files from A3M and HHM/HMMER-formatted files 
+# Creates HH-suite database files from A3M and HHM/HMMER-formatted files 
 # Usage: Usage: perl hhblitsdb.pl -o <db_name> [-ia3m <a3m_dir>] [-ihhm <hhm_dir>] [-ics <cs_dir>] [more_options]
 #
-#     HHsuite version 2.0.13 (February 2012)
+#     HHsuite version 2.0.14 (May 2012)
 #
 #     Reference: 
 #     Remmert M., Biegert A., Hauser A., and Soding J.
@@ -37,7 +37,6 @@ $|= 1; # Activate autoflushing on STDOUT
 # Default values:
 our $v=2;             # verbose mode
 my $a_if_append = ""; # do not append by default
-my $a3mext = "a3m";   # default A3M-file extension
 my $hhmext = "hhm";   # default HHM-file extension
 my $csext = "seq219";   # default HHM-file extension
 my $cpu = 8;
@@ -60,11 +59,11 @@ my $numa3mfiles=0;
 my $numhhmfiles=0;
 my $help="
 hhblitsdb.pl from HHsuite $VERSION  
-Builds HHblits database files from MSA and HMM files 
+Builds HH-suite database files from MSA and HMM files 
 
 Usage: hhblitsdb.pl -o <db_name> [-ia3m <a3m_dir>] [-ihhm <hhm_dir>] [-ics <cs_dir>] [options]
 
-Depending on the input directories, the following HHblits database files are generated:
+Depending on the input directories, the following HH-suite database files are generated:
  <db_name>.cs219              column-state sequences, one for each MSA/HMM (for prefilter)
  <db_name>.cs219.sizes        number of sequences and characters in <db_name>.cs219
  <db_name>_a3m_db             packed file containing A3M alignments read from <a3m_dir>
@@ -77,33 +76,34 @@ Depending on the input directories, the following HHblits database files are gen
 Options:
  -o <db_name>    name of database
  -ia3m <a3m_dir> input directory (or glob of directories) with A3M-formatted files
+                 These files MUST have extension 'a3m'.
  -ihhm <hhm_dir> input directory (or glob of directories) with HHM (or HMMER) files 
-                 (WARNING! HMMER format results in decreased performance over HHM format)
+                 These files MUST have extension 'hhm' (HHsuite) or 'hmm' (HMMER3). 
  -ics  <cs_dir>  input directory (or glob of directories) with column state sequences
  -log <logfile>  log file recording stderr stream of cstranslate and hhmake commands
 
- -csext          extension of column state sequences (default: $csext)
- -a3mext         extension of A3M-formatted files (default: $a3mext)
- -hhmext         extension of HHM- or HMMER-formatted files (default: $hhmext)
+ -csext <ext>    extension of column state sequences (default: $csext)
+ -hmm            use HMMER-formatted files. These MUST have extension hmm
+                 (WARNING! HMMER format results in decreased performance over HHM format)
  -append         append A3M/HHM files to packed db files if they exist (default: overwrite)
  -v [1-3]        verbose mode (default: $v)
  -cpu <int>      number of threads to generate cs219 and hhm files (default = $cpu)
 
  
 Example 1: only -ia3m given; cs sequences and hhm files are generated from a3m files
-   perl hhblitsdb.pl -o databases/mydb -ia3m mydb/a3ms 
+   perl hhblitsdb.pl -o databases/mydb -ia3m mydb/a3ms/ 
 
 Example 2: only -ihhm given; cs sequences are generated from hhm files, but no a3m db file 
-   perl hhblitsdb.pl -o databases/mydb -ihhm mydb/hhms 
+   perl hhblitsdb.pl -o databases/mydb -ihhm mydb/hhms/ 
 
 Example 3: -ia3m and -ihhm given; cs sequences are generated from a3m files
-   perl hhblitsdb.pl -o databases/mydb -ia3m mydb/a3ms -ihhm mydb/hhms   
+   perl hhblitsdb.pl -o databases/mydb -ia3m mydb/a3ms/ -ihhm mydb/hhms/   
 
 Example 4: -ics, -ia3m, and -ihhm given; all db files are created 
-   perl hhblitsdb.pl -o databases/mydb -ia3m mydb/a3ms -ihhm mydb/hhms -ics mydb/cs  
+   perl hhblitsdb.pl -o databases/mydb -ia3m mydb/a3ms/ -ihhm mydb/hhms/ -ics mydb/cs/  
 
-Example 5: using glob expression to specify several input databases
-   perl hhblitsdb.pl -o databases/mydb -ihhm 'mydbs*/hhms'  
+Example 5: using glob expression to specify several input databases (note the singe quotes)
+   perl hhblitsdb.pl -o databases/mydb -ihhm 'mydbs*/hhms/'  
 \n";
 
 
@@ -151,18 +151,9 @@ for (my $i=0; $i<@ARGV; $i++) {
 	} else {
 	    die ("$help\n\nERROR! Missing extension after -csext option!\n");
 	}
-    } elsif ($ARGV[$i] eq "-a3mext") {
-	if (++$i<@ARGV) {
-	    $a3mext=$ARGV[$i];
-	} else {
-	    die ("$help\n\nERROR! Missing extension after -a3mext option!\n");
-	}
-    } elsif ($ARGV[$i] eq "-hhmext") {
-	if (++$i<@ARGV) {
-	    $hhmext=$ARGV[$i];
-	} else {
-	    die ("$help\n\nERROR! Missing extension after -hhmext option!\n");
-	}
+    } elsif ($ARGV[$i] eq "-hmm") {
+	$hhmext="hmm";
+	print("\nWARNING! HMMER format results in decreased performance over HHM format. We recommend to generate hhm files directly from multiple sequence alignments using hmake.\n");
     } elsif ($ARGV[$i] eq "-v") {
 	if (++$i<@ARGV) {
 	    $v=$ARGV[$i];
@@ -217,7 +208,7 @@ if (!$csdir)
 	foreach $dir (@dirs) {
 	    print("\nGenerating seq219 files in $tmpdir/ from a3m files in $dir/\n\n");
 	    $command = "$hhbin/cstranslate -i \$file -o $tmpdir/\$base.seq219 -D $context_lib -A $cs_lib -x $x -c $c 1>>$logfile 2>>$logfile";
-	    &System("$hhscripts/multithread.pl '".$dir."/*.".$a3mext."' '$command' -cpu $cpu");
+	    &HHPaths::System("$hhscripts/multithread.pl '".$dir."/*.a3m' '$command' -cpu $cpu");
 	    $numa3mfiles += scalar(glob("$dir/*.a3m"));
 	}
 	
@@ -228,23 +219,23 @@ if (!$csdir)
 	    if ($hhmext eq "hmm") {
 		print("\nGenerating prf profile files in $tmpdir/ from hmm files in $dir/\n\n");
 		$command = "$hhscripts/create_profile_from_hmmer.pl -i \$file -o $tmpdir/\$base.prf 1>/dev/null 2>>$logfile";
-		&System("$hhscripts/multithread.pl '".$dir."/*.".$hhmext."' '$command' -cpu $cpu");
+		&HHPaths::System("$hhscripts/multithread.pl '".$dir."/*.".$hhmext."' '$command' -cpu $cpu");
 	    } else { # $hhmext eq "hhm"
 		print("\nGenerating prf profile files in $tmpdir/ from hhm files in $dir/\n\n");
 		$command = "$hhscripts/create_profile_from_hhm.pl -i \$file -o $tmpdir/\$base.prf 1>/dev/null 2>>$logfile";
-		&System("$hhscripts/multithread.pl '".$dir."/*.".$hhmext."' '$command' -cpu $cpu");
+		&HHPaths::System("$hhscripts/multithread.pl '".$dir."/*.".$hhmext."' '$command' -cpu $cpu");
 	    }
 	}
 
 	if ($hhmext eq "hmm") {
 	    print("\nGenerating seq219 files in $tmpdir/ from prf files in $tmpdir/\n\n");
 	    $command = "$hhbin/cstranslate -i \$file -o \$name.seq219 -A $cs_lib 1>>$logfile 2>>$logfile";
-	    &System("$hhscripts/multithread.pl '".$tmpdir."/*.prf' '$command' -cpu $cpu");
+	    &HHPaths::System("$hhscripts/multithread.pl '".$tmpdir."/*.prf' '$command' -cpu $cpu");
 	    
 	} else { # $hhmext eq "hhm"
 	    print("\nGenerating seq219 files in $tmpdir/ from prf files in $tmpdir/\n\n");
 	    $command = "$hhbin/cstranslate -i \$file -o \$name.seq219 -A $cs_lib -D $context_lib -x $x -c $c 1>>$logfile 2>>$logfile";
-	    &System("$hhscripts/multithread.pl '".$tmpdir."/*.prf' '$command' -cpu $cpu");
+	    &HHPaths::System("$hhscripts/multithread.pl '".$tmpdir."/*.prf' '$command' -cpu $cpu");
 	}
     }
 
@@ -290,7 +281,7 @@ if (!$hhmdir)
 	foreach $dir (@dirs) {
 	    print("\nGenerating hhm files in $tmpdir/ from a3m files in $dir/\n\n");
 	    $command = "hhmake -i \$file -o $tmpdir/\$base.hhm  1>/dev/null 2>>$logfile";
-	    &System("$hhscripts/multithread.pl '".$dir."/*.".$a3mext."' '$command' -cpu $cpu");	
+	    &HHPaths::System("$hhscripts/multithread.pl '".$dir."/*.a3m' '$command' -cpu $cpu");	
 	}
 	$hhmdir = $tmpdir;
 	$numhhmfiles = scalar(glob("$tmpdir/*.hhm"));
@@ -310,7 +301,7 @@ if ($a3mfile ne "") {
     $numa3mfiles = 0;
     my @dirs = glob($a3mdir);
     foreach $dir (@dirs) {
-	my @files = glob("$dir/*.$a3mext");
+	my @files = glob("$dir/*.a3m");
 	$numa3mfiles += scalar(@files);
 	foreach $file (@files) {
 	    print OUT "$file\n";
@@ -318,8 +309,10 @@ if ($a3mfile ne "") {
     }
     close OUT;
     
+    # Build packed file (concatenated with '\0' as delimiters) and index file from files in file list
+    # The ffindex binaries are contained in <install_dir>/lib/ffindex/bin/
     $command = "ffindex_build -".$a_if_append."s -f $tmpdir/a3m.filelist $a3mfile $a3mfile.index";
-    &System($command);
+    &HHPaths::System($command);
  
     open (OUT, ">$a3mfile.index.sizes");
     print OUT "$numa3mfiles\n";
@@ -342,8 +335,10 @@ if ($hhmfile ne "") {
     }
     close OUT;
 
+    # Build packed file (concatenated with '\0' as delimiters) and index file from files in file list
+    # The ffindex binaries are contained in <install_dir>/lib/ffindex/bin/
     $command = "ffindex_build -".$a_if_append."s -f $tmpdir/hhm.filelist $hhmfile $hhmfile.index";
-    &System($command);
+    &HHPaths::System($command);
  
     open (OUT, ">$hhmfile.index.sizes");
     print OUT "$numhhmfiles\n";
@@ -351,14 +346,14 @@ if ($hhmfile ne "") {
 }
 
 print("\n");
-printf("Number of $a3mext files:    %i\n",$numa3mfiles);
+printf("Number of a3m files:    %i\n",$numa3mfiles);
 printf("Number of $hhmext files:    %i\n",$numhhmfiles);
 printf("Number of $csext files: %i\n\n",$numcsfiles);
 
 my $err=0;
 if ($numa3mfiles && $numhhmfiles && $numa3mfiles != $numhhmfiles) {
     print("**************************************************************************
-WARNING: Number of $a3mext files not equal to number of $hhmext files
+WARNING: Number of a3m files not equal to number of $hhmext files
 **************************************************************************\n"); $err=1;
 }
 if ($numcsfiles && $numhhmfiles && $numcsfiles != $numhhmfiles) {
@@ -368,7 +363,7 @@ WARNING: Number of $csext files not equal to number of $hhmext files
 }
 if ($numcsfiles && $numa3mfiles && $numcsfiles != $numa3mfiles) {
     print("**************************************************************************
-WARNING: Number of $csext files not equal to number of $a3mext files
+WARNING: Number of $csext files not equal to number of a3m files
 **************************************************************************\n"); $err=1;
 }
 
@@ -380,12 +375,3 @@ elsif ($v<3) {
 wait;
 exit;
 
-
-################################################################################################
-### System command with return value parsed from output
-################################################################################################
-sub System()
-{
-    if ($v>=2) {printf("\$ %s\n",$_[0]);} 
-    system($_[0]); # ==0 or print(STDERR "ERROR: command $_[0] failed with error code $?\n");
-}

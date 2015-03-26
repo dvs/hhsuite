@@ -39,7 +39,7 @@ public:
     float lamda, mu;          // coefficients for aa score distribution of HMM using parameters in 'Parameters par'
 
    // Make a flat copy of q
-    void FlatCopyTo(HMM& t);
+    void FlatCopyTo(HMM* t);
 
     // Read an HMM from a HHsearch .hhm file and return 0 at end of file
     int Read(FILE* dbf, char* path=NULL);
@@ -75,7 +75,7 @@ public:
     void DivideBySqrtOfLocalBackgroundFreqs(int D);
 
     // Factor Null model into HMM t
-    void IncludeNullModelInHMM(HMM& q, HMM& t, int columnscore=par.columnscore);
+    void IncludeNullModelInHMM(HMM* q, HMM* t, int columnscore=par.columnscore);
 
     // Write HMM to output file
     void WriteToFile(char* outfile);
@@ -96,7 +96,7 @@ public:
     void AddSSPrediction(char seq_pred[], char seq_conf[]);
 
     // Initialize f[i][a] with query HMM
-    void MergeQueryHMM(HMM& q, float wk[]);
+    void MergeQueryHMM(HMM* q, float wk[]);
 
     // Rescale rate matrices P[a][b], R[a][b] according to HMM av. aa composition in pav[a]
     void RescaleMatrix();
@@ -115,7 +115,6 @@ public:
     char* sa_dssp;            // solvent accessibility state determined by dssp 0:-  1:A (absolutely buried) 2:B  3:C  4:D  5:E (exposed)
     char* ss_pred;            // predicted secondary structure          0:-  1:H  2:E  3:C
     char* ss_conf;            // confidence value of prediction         0:-  1:0 ... 10:9
-    char* Xcons;              // consensus sequence in internal representation (A=0 R=1 N=2 D=3 ...)
     int* l;                   // l[i] = pos. of j'th match state in aligment
     char trans_lin;           // transition probs are given in log or lin space? (0: p_tr  1: log(p_tr)
     bool dont_delete_seqs;    // set to one if flat copy of seqs and sname was made to a hit object, to avoid deletion
@@ -124,7 +123,7 @@ public:
     // Utility for Read()
     int Warning(FILE* dbf, char line[], char name[])
     {
-        if (v) cerr<<"\nWARNING: could not read line\n\'"<<line<<"\'\nin HMM "<<name<<" in "<<file<<"\n";
+        if (v) cerr<<"\nWARNING in "<<program_name<<": could not read line\n\'"<<line<<"\'\nin HMM "<<name<<" in "<<file<<"\n";
         while (fgetline(line,LINELEN,dbf) && !(line[0]=='/' && line[1]=='/'));
         if (line) return 2;  //return status: skip HMM
         return 0;            //return status: end of database file

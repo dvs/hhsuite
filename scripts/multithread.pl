@@ -5,7 +5,7 @@
 # Usage:   multithread.pl <fileglob> '<command>' [-cpu <int>] 
 #
 #
-#     HHsuite version 2.0.3 (January 2012)
+#     HHsuite version 2.0.14 (May 2012)
 #
 #     Reference: 
 #     Remmert M., Biegert A., Hauser A., and Soding J.
@@ -141,9 +141,12 @@ foreach $file (@files) {
 	die("\nError: fork returned undefined PID: $!\n");
     }
 }
-wait;
+
+# Wait for all children to finish
+while (wait() != -1) {}
+
 if ($v>=1) {print ("\nAll processes should be finished now\n");}
-if ($numerr>0) {print(STDERR "WARNING: $numerr commands returned with error code >0\n");}
+if ($numerr>0) {print(STDERR "WARNING: $numerr commands returned with error code.\n");}
 exit(0);
 
 
@@ -162,12 +165,15 @@ sub KillAllProcesses()
     die ("\nInterrupt: Killed main process $$\n");
 }
 
+################################################################################################
+### System command
+################################################################################################
 sub System {
     if ($v>=2) {print("\n");} 
     if ($v>=1) {print("\n".$_[0]," ");}
     if (system($_[0])) {
-# Why is always -1 returned??
-#	print(STDERR "\nERROR: command '$command' returned error code $?\n");
+# Why is always -1 returned???
+#       print(STDERR "\nERROR: command '$command' returned error code $?\n");
+#       $numerr++;
     };
 }
-

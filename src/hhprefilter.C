@@ -750,7 +750,9 @@ int ungapped_sse_score(const unsigned char* query_profile,
 }
 
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
 // Pull out all names from prefilter db file and copy into dbfiles_new for full HMM-HMM comparison
+///////////////////////////////////////////////////////////////////////////////////////////////////
 void init_no_prefiltering()
 {
   // Get DBsize and num_chars
@@ -763,7 +765,6 @@ void init_no_prefiltering()
       exit(4);
     }
 
-  char word[NAMELEN];
   FILE* dbf = NULL;
   dbf = fopen(db,"rb");
   if (!dbf) OpenFileError(db);
@@ -772,31 +773,24 @@ void init_no_prefiltering()
     {
       if (line[0]=='>')
 	{
-	  strwrd(word,line+1,NAMELEN);
 
 	  // Add hit to dbfiles
+	  char name[NAMELEN];
 	  char db_name[NAMELEN];
+	  strwrd(name,line+1,NAMELEN);
+	  char* ptr1 = strchr(name,'|');
+	  if (ptr1) // found '|' in sequence id? => extract string up to '|'
+	    {
+	      char* ptr2 = strchr(++ptr1,'|');
+	      if (ptr2) strmcpy(db_name,ptr1,ptr2-ptr1);
+	      else strcpy(db_name,ptr1);
+	    }
+	  else 
+	    strcpy(db_name,name);
 	  
-	  if (!strncmp(word,"cl|",3))   // kClust formatted database (NR20, ...)
-	    {
-	      substr(db_name,word,3,11);
-	      strcat(db_name,".hhm");
-	    }
-	  else if (!strncmp(word,"UP20|",5) || !strncmp(word,"NR20|",5)) // kClust formatted database (NR20, ...)
-	    {
-	      substr(db_name,word,5,13);
-	      strcat(db_name,".hhm");
-	    }
-	  else // other database
-	    {
-	      strcpy(db_name,word);
-// What was the reason to have this code? Michael does not remember...
-	      // strtr(db_name,"|", "_");
-	      // strtr(db_name,".", "_");
-	      strcat(db_name,".");
-	      strcat(db_name,db_ext);
-	    }
-	  
+	  strcat(db_name,".");
+	  strcat(db_name,db_ext);
+
 	  dbfiles_new[ndb_new]=new(char[strlen(db_name)+1]);
 	  strcpy(dbfiles_new[ndb_new],db_name);
 	  ndb_new++;
@@ -804,11 +798,13 @@ void init_no_prefiltering()
     }
   fclose(dbf);
 
-  cerr<<"Init without prefiltering! "<<ndb_new<<" HHMs in database!\n";
+  if (v>=2) cout<<"Searching "<<ndb_new<<" database HHMs without prefiltering"<<endl;
 
 }
       
-
+//////////////////////////////////////////////////////////////
+// Reading in column state sequences for prefiltering
+//////////////////////////////////////////////////////////////
 void init_prefilter()
 {
   // Get Prefilter Pvalue (Evalue / Par.Dbsize)
@@ -817,7 +813,7 @@ void init_prefilter()
   if (par.dbsize == 0 || LDB == 0)
     {cerr<<endl<<"Error! Could not determine DB-size of prefilter db ("<<db<<")\n"; exit(4);}
 	    
-  if (v>=3) printf("Number of column-state sequences: %6i\n",par.dbsize);
+  if (v>=2) cout<<"Reading in "<<par.dbsize<<" column state sequences with a total length of "<<LDB<<" residues"<<endl;
 
   X = (unsigned char*)memalign(16,LDB*sizeof(unsigned char));                     // database string (concatenate all DB-seqs)
   first = (unsigned char**)memalign(16,(par.dbsize+2)*sizeof(unsigned char*));    // first characters of db sequences. Was (par.dbsize*2). Why??
@@ -892,7 +888,7 @@ void stripe_query_profile()
   int a,h,i,j,k;
 
   // Add Pseudocounts
-  if (!*par.clusterfile) {
+  if (par.nocontxt) {
     // Generate an amino acid frequency matrix from f[i][a] with full pseudocount admixture (tau=1) -> g[i][a]
     q_tmp->PreparePseudocounts();
     // Add amino acid pseudocounts to query: p[i][a] = (1-tau)*f[i][a] + tau*g[i][a]
@@ -1120,37 +1116,29 @@ void prefilter_db()
       backtrace_hits[count_dbs++] = (*it).second;
 
       // Add hit to dbfiles
-      char tmp_name[NAMELEN];
+      char name[NAMELEN];
       char db_name[NAMELEN];
-      strwrd(tmp_name,dbnames[(*it).second]);
-      
-      if (!strncmp(tmp_name,"cl|",3))   // kClust formatted database (NR20, NR30, UNIPROT20)
-	{
-	  substr(db_name,tmp_name,3,11);
-	  strcat(db_name,".hhm");
-	}
-      else if (!strncmp(tmp_name,"UP20|",5) || !strncmp(tmp_name,"NR20|",5)) // kClust formatted database (NR20, ...)
-	{
-	  substr(db_name,tmp_name,5,13);
-	  strcat(db_name,".hhm");
-	}
-       else // other database
+      strwrd(name,dbnames[(*it).second]);
+      char* ptr1 = strchr(name,'|');
+      if (ptr1) // found '|' in sequence id? => extract string up to '|'
       	{
-      	  strcpy(db_name,tmp_name);
-// What was the reasone to have this code? Michael does not remember...
-// 	  strtr(db_name,"|", "_");
-// 	  strtr(db_name,".", "_");
-      	  strcat(db_name,".");
-      	  strcat(db_name,db_ext);
+      	  char* ptr2 = strchr(++ptr1,'|');
+      	  if (ptr2) strmcpy(db_name,ptr1,ptr2-ptr1);
+	  else strcpy(db_name,ptr1);
       	}
-	        
+      else 
+      	strcpy(db_name,name);
+      
+      strcat(db_name,".");
+      strcat(db_name,db_ext);
+
       if (! doubled->Contains(db_name))
 	{
 	  doubled->Add(db_name);
 	  // check, if DB was searched in previous rounds 
-	  strcat(tmp_name,"__1");  // irep=1
+	  strcat(name,"__1");  // irep=1
 
-	  if (previous_hits->Contains(tmp_name))
+	  if (previous_hits->Contains(name))
 	    {
 	      dbfiles_old[ndb_old]=new(char[strlen(db_name)+1]);
 	      strcpy(dbfiles_old[ndb_old],db_name);
@@ -1200,8 +1188,8 @@ void prefilter_db()
 	      
 	      if (num_res > 0) 
 		{
-		  char tmp_name[NAMELEN];
-		  strwrd(tmp_name,dbnames[backtrace_hits[n]]);
+		  char name[NAMELEN];
+		  strwrd(name,dbnames[backtrace_hits[n]]);
 		  block = new(int[400]);
 		  block_count = 0;
 		  for (int a = 0; a < num_res; a++) 
@@ -1215,8 +1203,8 @@ void prefilter_db()
 		    }
 #pragma omp critical
 		  {
-		    par.block_shading->Add(tmp_name,block);
-		    par.block_shading_counter->Add(tmp_name,block_count);
+		    par.block_shading->Add(name,block);
+		    par.block_shading_counter->Add(name,block_count);
 		  }
 		}
 	      delete[] res;

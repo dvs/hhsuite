@@ -1,7 +1,7 @@
 INSTALL_DIR?=..
 libdir=`([ -d /usr/lib64 ] && echo lib64) || echo lib`
 LANG=C
-CFLAGS+=-std=c99 -openmp -g -fPIC -Wall
+CFLAGS+=-std=c99 -O2 -openmp -g -fPIC -Wall
 ifdef FFINDEX_STATIC
 	LDFLAGS+=-static
 	FFINDEX_OBJECTS=libffindex.a
@@ -11,9 +11,12 @@ endif
 
 #-Wl,--version-script=libffindex.map
 
-all: ffindex_get ffindex_build ffindex_modify libffindex.a libffindex.so
+all: ffindex_from_fasta ffindex_get ffindex_build ffindex_modify libffindex.a libffindex.so
 
 ffindex.o: ffindex.c ffindex.h ffutil.h
+
+ffindex_from_fasta: $(FFINDEX_OBJECTS) ffindex_from_fasta.o ffindex.h
+	$(CC) -o $@ ffindex_from_fasta.o $(LDFLAGS) -L. -lffindex
 
 ffindex_get: $(FFINDEX_OBJECTS) ffindex_get.o ffindex.h
 	$(CC) -o $@ ffindex_get.o $(LDFLAGS) -L. -lffindex
@@ -53,7 +56,8 @@ time:
 	LD_LIBRARY_PATH=".:$(LD_LIBRARY_PATH)" zsh -c "time ./ffindex_get  ../test_big/nr20_11Jan10_a3m_db ../test_big/nr20_11Jan10_a3m_db.ffindex BABBAMIBA.a3m KARDUZEBA.a3m HARPAQIBA.a3m WOQQATEBA.a3m BEBRAQIBA.a3m GIRSAKEBA.a3m NAQTIFIBA.a3m BIWCIQABA.a3m > /dev/null"
 
 clean:
-	rm -f ffindex.o ffutil.o ffindex_build ffindex_build.o ffindex_get ffindex_get.o libffindex.so libffindex.so.0.1 ffindex_modify ffindex_modify.o libffindex.a
+	rm -f ffindex.o ffutil.o ffindex_build ffindex_build.o ffindex_get ffindex_get.o libffindex.so libffindex.so.0.1 ffindex_modify ffindex_modify.o \
+		libffindex.a  ffindex_from_fasta.o ffindex_from_fasta
 
 install:
 	mkdir -p $(INSTALL_DIR)/bin
@@ -62,6 +66,7 @@ install:
 	install ffindex_get $(INSTALL_DIR)/bin/ffindex_get
 	install ffindex_build $(INSTALL_DIR)/bin/ffindex_build
 	install ffindex_modify $(INSTALL_DIR)/bin/ffindex_modify
+	install ffindex_from_fasta $(INSTALL_DIR)/bin/ffindex_from_fasta
 	install libffindex.so.0.1 $(INSTALL_DIR)/$(libdir)/libffindex.so.0.1
 	install libffindex.a $(INSTALL_DIR)/$(libdir)/libffindex.a
 	ln -sf libffindex.so.0.1 $(INSTALL_DIR)/$(libdir)/libffindex.so
@@ -71,7 +76,8 @@ install:
 deinstall:
 	rm -f $(INSTALL_DIR)/bin/ffindex_get $(INSTALL_DIR)/bin/ffindex_build $(INSTALL_DIR)/bin/ffindex_modify \
 		$(INSTALL_DIR)/$(libdir)/libffindex.so.0.1 $(INSTALL_DIR)/$(libdir)/libffindex.a \
-		$(INSTALL_DIR)/$(libdir)/libffindex.so $(INSTALL_DIR)/include/ffindex.h $(INSTALL_DIR)/include/ffutil.h
+		$(INSTALL_DIR)/$(libdir)/libffindex.so $(INSTALL_DIR)/include/ffindex.h $(INSTALL_DIR)/include/ffutil.h\
+		$(INSTALL_DIR)/bin/ffindex_from_fasta
 	rmdir $(INSTALL_DIR)/bin || true
 	rmdir $(INSTALL_DIR)/$(libdir) || true
 	rmdir $(INSTALL_DIR)/include || true

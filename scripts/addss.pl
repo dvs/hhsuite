@@ -4,14 +4,14 @@
 # Add PSIPRED secondary structure prediction (and DSSP annotation) to an MSA or HMMER file.
 # Output format is A3M (for input alignments) or HMMER (see User Guide).
 
-#     HHsuite version 2.0
+# (C) Johannes Soeding and Michael Remmert, 2012
+
+#     HHsuite version 2.0.14 (May 2012)
 #
 #     Reference: 
 #     Remmert M., Biegert A., Hauser A., and Soding J.
 #     HHblits: Lightning-fast iterative protein sequence searching by HMM-HMM alignment.
 #     Nat. Methods, epub Dec 25, doi: 10.1038/NMETH.1818 (2011).
-
-#     (C) Johannes Soeding and Michael Remmert, 2012
 
 #     This program is free software: you can redistribute it and/or modify
 #     it under the terms of the GNU General Public License as published by
@@ -47,6 +47,8 @@ our $v=2;              # verbose mode
 my $numres=0;          # number of residues per line for secondary structure
 my $informat="a3m";    # input format
 my $neff = 7;          # use alignment with this diversity for PSIPRED prediction
+my $program=$0;        # name of perl script
+my $pdbfile;
 
 my $help="
 addss.pl from HHsuite $VERSION  
@@ -71,8 +73,9 @@ Usage: perl addss.pl <ali_file> [<outfile>] [-fas|-a3m|-clu|-sto]
 my $line;
 my @seqs;              # sequences from infile (except >aa_ and >ss_pred sequences)
 my $query_length;
+my $header;            # header of MSA: everything before first '>'
+my $name;              # query in fasta format: '>$name [^\n]*\n$qseq\n'
 my $qseq;              # residues of query sequence
-my $name;              # query in fasta format: '>$name [^\n]*\n$qseq'
 my $infile;
 my $outfile;
 my $ss_pred="";        # psipred ss states
@@ -81,7 +84,7 @@ my $ss_dssp;           # dssp states as string
 my $sa_dssp;           # relative solvent accessibility from dssp as string {A,B,C,D,E} A:absolutely buried, B:buried, E:exposed
 my $aa_dssp;           # residues from dssp file as string
 my $aa_astr;           # residues from infile as string
-
+my $q_match;           # number of match states in query sequence
 my $xseq;              # sequence x returned from Align.pm
 my $yseq;              # sequence y returned from Align.pm  
 my $Sstr;              # match sequence returned from Align.pm
@@ -103,7 +106,7 @@ elsif ($options=~s/ -clu\s/ /g) {$informat="clu";}
 elsif ($options=~s/ -sto\s/ /g) {$informat="sto";}
 elsif ($options=~s/ -hmm\s/ /g) {$informat="hmm";}
 
-if ($options=~s/ -v\s+(\S+) //) {$v=$1;}
+if ($options=~s/ -v\s+(\d+) / /g)  {$v=$1;}
 
 # Set input and output file
 if ($options=~s/ -i\s+(\S+) //) {$infile=$1;}
@@ -148,9 +151,9 @@ if ($informat ne "hmm") {
 
     # Use first sequence to define match states and reformat input file to a3m and psi
     if ($informat ne "a3m") {
-	&System("$hhscripts/reformat.pl -v $v2 -M first $informat a3m $infile $tmpfile.in.a3m");
+	&HHPaths::System("$hhscripts/reformat.pl -v $v2 -M first $informat a3m $infile $tmpfile.in.a3m");
     } else {
-	&System("cp $infile $tmpfile.in.a3m");
+	&HHPaths::System("cp $infile $tmpfile.in.a3m");
     }
     
     # Read query sequence
@@ -158,8 +161,9 @@ if ($informat ne "hmm") {
     $/=">"; # set input field separator
     my $i=0;
     $qseq="";
+    $header = <INFILE>;
+    $header =~s />$//; 
     while ($line=<INFILE>) {
-	if ($line eq ">") {next;}
 	$line=~s/>$//;
 	if ($line=~/^ss_/ || $line=~/^aa_/) {next;}
 	$seqs[$i++]=">$line";
@@ -171,35 +175,17 @@ if ($informat ne "hmm") {
 	}
     }
     close(INFILE);
-    
+    $/="\n"; # set input field separator
+
     if ($qseq =~ /\-/) {
 	
-	$/="\n"; # set input field separator
-	
 	# First sequence contains gaps => calculate consensus sequence
-	&System("hhconsensus -i $tmpfile.in.a3m -s $tmpfile.sq -o $tmpfile.in.a3m > /dev/null");
+	&HHPaths::System("hhconsensus -i $tmpfile.in.a3m -s $tmpfile.sq -o $tmpfile.in.a3m > /dev/null");
 	
     } else {
 	
 	$query_length = ($qseq=~tr/A-Z/A-Z/);
 	$qseq=~tr/A-Z//cd; # remove everything except capital letters
-	
-	# If less than 26 match states => add sufficient number of Xs to the end of each sequence in $tmpfile.in.a3m
-	my $q_match = ($qseq=~tr/A-Z/A-Z/); # count number of capital letters
-	if ($q_match<=25) {                 # Psiblast needs at least 26 residues in query
-	    my $addedXs=('X' x (26-$q_match))."\n";
-	    $qseq.=$addedXs;     # add 'X' to query to make it at least 26 resiudes long
-	    for ($i=0; $i<@seqs; $i++) {	    
-		$seqs[$i]=~s/\n$//g;
-		$seqs[$i].=$addedXs;
-	    }
-	    open (INFILE,">$tmpfile.in.a3m");
-	    for ($i=0; $i<@seqs; $i++) {
-		printf(INFILE "%s",$seqs[$i]);
-	    }
-	    close INFILE;
-	}
-	$/="\n"; # set input field separator
 	
 	# Write query sequence file in FASTA format
 	open (QFILE, ">$tmpfile.sq") or die("ERROR: can't open $tmpfile.sq: $!\n");
@@ -209,12 +195,13 @@ if ($informat ne "hmm") {
     
     # Filter alignment to diversity $neff 
     if ($v>=1) {printf ("Filtering alignment to diversity $neff ...\n");}
-    &System("hhfilter -v $v2 -neff $neff -i $tmpfile.in.a3m -o $tmpfile.in.a3m");
+    &HHPaths::System("hhfilter -v $v2 -neff $neff -i $tmpfile.in.a3m -o $tmpfile.in.a3m");
     
     # Reformat into PSI-BLAST readable file for jumpstarting 
-    &System("$hhscripts/reformat.pl -v $v2 -r -noss a3m psi $tmpfile.in.a3m $tmpfile.in.psi");
+    &HHPaths::System("$hhscripts/reformat.pl -v $v2 -r -noss a3m psi $tmpfile.in.a3m $tmpfile.in.psi");
     
     open (ALIFILE, ">$outfile") || die("ERROR: cannot open $outfile: $!\n");
+    printf (ALIFILE "%s",$header);
     
     # Add DSSP sequence (if available)
     if ($dssp ne "") {
@@ -222,13 +209,13 @@ if ($informat ne "hmm") {
 	    if ($numres) {
 		$ss_dssp=~s/(\S{$numres})/$1\n/g;  # insert a line break every $numres residues
 	    }
-	    print(ALIFILE ">ss_dssp\n$ss_dssp\n");
-	    if ($v>=1) {printf ("\nAdding DSSP state sequence ...\n");}
+	    printf (ALIFILE ">ss_dssp\n%s\n",$ss_dssp);
+	    if ($v>=1) {print("\nAdding DSSP state sequence ...\n");}
         }
     }
 
     # Secondary structure prediction with psipred
-    if ($v>=2) {printf ("Predicting secondary structure with PSIPRED ... ");}
+    if ($v>=2) {print("Predicting secondary structure with PSIPRED ... ");}
     &RunPsipred("$tmpfile.sq");
     
     if (open (PSIPREDFILE, "<$tmpfile.horiz")) {
@@ -245,16 +232,16 @@ if ($informat ne "hmm") {
 		$ss_pred=~s/(\S{$numres})/$1\n/g; # insert a line break every $numres residues
 		$ss_conf=~s/(\S{$numres})/$1\n/g; # insert a line break every $numres residues
 	    }
-	print(ALIFILE ">ss_pred PSIPRED predicted secondary structure\n$ss_pred\n");
-	print(ALIFILE ">ss_conf PSIPRED confidence values\n$ss_conf\n");
+	printf(ALIFILE ">ss_pred PSIPRED predicted secondary structure\n%s\n",$ss_pred);
+	printf(ALIFILE ">ss_conf PSIPRED confidence values\n%s\n",$ss_conf);
     }
     
     # Append alignment sequences to psipred sequences
     for ($i=0; $i<@seqs; $i++) {
-	print(ALIFILE $seqs[$i]);
+	printf(ALIFILE "%s",$seqs[$i]);
     }
     close(ALIFILE);
-    if ($v>=2) {printf ("done \n");}
+    if ($v>=2) {print("done \n");}
 } 
 ##############################################################
 # HMMER format
@@ -368,9 +355,9 @@ else
 	
 	# Start Psiblast from checkpoint file tmp.chk that was generated to build the profile
 	if (-e "$datadir/weights.dat4") { # Psipred version < 3.0
-	    &System("$execdir/psipred $tmpfile.mtx $datadir/weights.dat $datadir/weights.dat2 $datadir/weights.dat3 $datadir/weights.dat4 > $tmpfile.ss");
+	    &HHPaths::System("$execdir/psipred $tmpfile.mtx $datadir/weights.dat $datadir/weights.dat2 $datadir/weights.dat3 $datadir/weights.dat4 > $tmpfile.ss");
 	} else {
-	    &System("$execdir/psipred $tmpfile.mtx $datadir/weights.dat $datadir/weights.dat2 $datadir/weights.dat3 > $tmpfile.ss");
+	    &HHPaths::System("$execdir/psipred $tmpfile.mtx $datadir/weights.dat $datadir/weights.dat2 $datadir/weights.dat3 > $tmpfile.ss");
 	}
 	
 	# READ PSIPRED file
@@ -403,7 +390,7 @@ else
 	
     close(OUTFILE);
     close(INFILE);
-    System("rm $tmpfile.mtx $tmpfile.ss $tmpfile.ss2");
+    &HHPaths::System("rm $tmpfile.mtx $tmpfile.ss $tmpfile.ss2");
     if ($v>=2) {printf("Added PSIPRED secondary structure to %i models\n",$nmodels);}
 }    
 
@@ -438,28 +425,28 @@ sub RunPsipred() {
     if (!-e "$dummydb.phr") {
 	if (!-e "$dummydb") {die "Error in addss.pl: Could not find $dummydb\n";}
 
-	&System("cp $infile $dummydb");
-	&System("$ncbidir/formatdb -i $dummydb");
+	&HHPaths::System("cp $infile $dummydb");
+	&HHPaths::System("$ncbidir/formatdb -i $dummydb");
 	if (!-e "$dummydb.phr") {die "Error in addss.pl: Could not find nor create index files for $dummydb\n";}
     }
 
     # Start Psiblast from checkpoint file tmp.chk that was generated to build the profile
-    &System("$ncbidir/blastpgp -b 1 -j 1 -h 0.001 -d $dummydb -i $infile -B $tmpfile.in.psi -C $tmpfile.chk 1> $tmpfile.blalog 2> $tmpfile.blalog");
+    &HHPaths::System("$ncbidir/blastpgp -b 1 -j 1 -h 0.001 -d $dummydb -i $infile -B $tmpfile.in.psi -C $tmpfile.chk 1> $tmpfile.blalog 2> $tmpfile.blalog");
     
     #print("Predicting secondary structure...\n");
     
-    &System("echo "."$tmpfile_no_dir".".chk > $tmpfile.pn\n");
-    &System("echo "."$tmpfile_no_dir".".sq  > $tmpfile.sn\n");
-    &System("$ncbidir/makemat -P $tmpfile");
+    &HHPaths::System("echo "."$tmpfile_no_dir".".chk > $tmpfile.pn\n");
+    &HHPaths::System("echo "."$tmpfile_no_dir".".sq  > $tmpfile.sn\n");
+    &HHPaths::System("$ncbidir/makemat -P $tmpfile");
     
     # Start Psiblast from checkpoint file tmp.chk that was generated to build the profile
     if (-e "$datadir/weights.dat4") { # Psipred version < 3.0
-	&System("$execdir/psipred $tmpfile.mtx $datadir/weights.dat $datadir/weights.dat2 $datadir/weights.dat3 $datadir/weights.dat4 > $tmpfile.ss");
+	&HHPaths::System("$execdir/psipred $tmpfile.mtx $datadir/weights.dat $datadir/weights.dat2 $datadir/weights.dat3 $datadir/weights.dat4 > $tmpfile.ss");
     } else {
-	&System("$execdir/psipred $tmpfile.mtx $datadir/weights.dat $datadir/weights.dat2 $datadir/weights.dat3 > $tmpfile.ss");
+	&HHPaths::System("$execdir/psipred $tmpfile.mtx $datadir/weights.dat $datadir/weights.dat2 $datadir/weights.dat3 > $tmpfile.ss");
     }
 
-    &System("$execdir/psipass2 $datadir/weights_p2.dat 1 0.98 1.09 $tmpfile.ss2 $tmpfile.ss > $tmpfile.horiz");
+    &HHPaths::System("$execdir/psipass2 $datadir/weights_p2.dat 1 0.98 1.09 $tmpfile.ss2 $tmpfile.ss > $tmpfile.horiz");
     
     # Remove temporary files
     if ($v<=3) { unlink(split ' ', "$tmpfile.pn $tmpfile.sn $tmpfile.mn $tmpfile.chk $tmpfile.blalog $tmpfile.mtx $tmpfile.aux $tmpfile.ss $tmpfile.ss2 $tmpfile.sq");}
@@ -532,24 +519,21 @@ sub AppendDsspSequences() {
 	}
     }
     close(QFILE);
-    if ($v>=2) {printf("Searching DSSP state assignments...\nname=%s  range=%s\n",$name,$qrange);}
+    if ($v>=3) {printf("Searching DSSP state assignments: name=%s  range=%s\n",$name,$qrange);}
 
     # Try to open dssp file 
     $dsspfile="$dsspdir/$pdbcode.dssp";
     if (! open (DSSPFILE, "<$dsspfile")) {
-	printf(STDOUT "WARNING: Cannot open $dsspfile!\n"); 
-	$pdbfile="$pdbdir/pdb$pdbcode.ent";
-	if (! -e $pdbfile) {
-	    printf(STDOUT "WARNING Cannot open $pdbfile!\n"); 
+	if ($v>=3) {printf(STDERR "Warning in $program: Cannot open $dsspfile!\n");} 
+	$pdbfile = &OpenPDBfile($pdbcode);
+	if ($pdbfile=="") {return;}
+
+	system("$dssp $pdbfile $tmpfile.dssp 2> /dev/null");
+	system("cp $tmpfile.dssp $dsspfile 2> /dev/null");
+	$dsspfile="$tmpfile.dssp";
+	if (! open (DSSPFILE, "<$dsspfile")) {
+	    if ($v>=3) {printf(STDERR "Warning in $program: dssp couldn't generate file from $pdbfile. Skipping $name\n");}
 	    return 1;
-	} else  {
-	    &System("$dssp $pdbfile $tmpfile.dssp > /dev/null");
-	    &System("cp $tmpfile.dssp $dsspfile ");
-	    $dsspfile="$tmpfile.dssp";
-	    if (! open (DSSPFILE, "<$dsspfile")) {
-		printf(STDERR "ERROR: dssp couldn't generate file from $pdbfile. Skipping $name\n");
-		return 1;
-	    } 
 	}
     }
 
@@ -719,11 +703,29 @@ sub sa2c ()
     else               {return "E";}
 }
 
-################################################################################################
-### System command
-################################################################################################
-sub System()
-{
-    if ($v>2) {printf("%s\n",$_[0]);} 
-    return system($_[0])/256;
+# Find the pdb file with $pdbcode in pdb directory 
+sub OpenPDBfile() {
+ 
+    my $pdbcode=lc($_[0]);
+    if (! -e "$pdbdir") {
+	if ($v>=3) {print(STDERR "Warning in $program: pdb directory '$pdbdir' does not exist!\n");} 
+	return 1;
+    }
+    if (-e "$pdbdir/all") {$pdbfile="$pdbdir/all/";}
+    elsif (-e "$pdbdir/divided") {$pdbfile="$pdbdir/divided/".substr($pdbcode,1,2)."/";}
+    else {$pdbfile="$pdbdir/";}
+    if ($pdbdir=~/divided.?$/) {$pdbfile.=substr($pdbcode,1,2)."/";}
+    if    (-e $pdbfile."pdb$pdbcode.ent")   {$pdbfile.="pdb$pdbcode.ent";}
+    elsif (-e $pdbfile."pdb$pdbcode.ent.gz") {$pdbfile="gunzip -c $pdbfile"."pdb$pdbcode.ent.gz |";}
+    elsif (-e $pdbfile."pdb$pdbcode.ent.Z") {$pdbfile="gunzip -c $pdbfile"."pdb$pdbcode.ent.Z |";}
+    elsif (-e $pdbfile."$pdbcode.pdb")      {$pdbfile."$pdbcode.pdb";}
+    else {
+	if ($v>=3) {printf(STDERR "Warning in $program: Cannot find pdb file $pdbfile"."pdb$pdbcode.ent!\n");}
+	return "";
+    }
+    if (!open (PDBFILE, "$pdbfile")) {
+	if ($v>=3) {printf(STDERR "Error in $program: Cannot open pdb file: $!\n");}
+	return "";
+    }
+    return $pdbfile;
 }

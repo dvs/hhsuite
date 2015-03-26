@@ -17,8 +17,8 @@
 
 #include <stdio.h>
 
-#define FFINDEX_VERSION 0.93
-#define FFINDEX_MAX_INDEX_ENTRIES_DEFAULT 6000000
+#define FFINDEX_VERSION 0.94
+#define FFINDEX_MAX_INDEX_ENTRIES_DEFAULT 40000000
 #define FFINDEX_MAX_ENTRY_NAME_LENTH 56
 
 enum ffindex_type { PLAIN_FILE, SORTED_FILE, SORTED_ARRAY, TREE };
@@ -41,6 +41,7 @@ typedef struct ffindex_index {
   ffindex_entry_t entries[]; /* This array is as big as the excess memory allocated for this struct. */
 } ffindex_index_t;
 
+int ffindex_insert_memory(FILE *data_file, FILE *index_file, size_t *offset, char *from_start, size_t from_length, char *name);
 
 int ffindex_insert_file(FILE *data_file, FILE *index_file, size_t *offset, const char *path, char *name);
 
@@ -48,11 +49,17 @@ int ffindex_insert_list_file(FILE *data_file, FILE *index_file, size_t *start_of
 
 int ffindex_insert_dir(FILE *data_file, FILE *index_file, size_t *offset, char *input_dir_name);
 
-FILE* ffindex_fopen(char *data, ffindex_index_t *index, char *filename);
+FILE* ffindex_fopen(char *data, ffindex_index_t *index, char *name);
 
 char* ffindex_mmap_data(FILE *file, size_t* size);
 
-char* ffindex_get_filedata(char* data, size_t offset);
+char* ffindex_get_data_by_offset(char* data, size_t offset);
+
+char* ffindex_get_data_by_name(char *data, ffindex_index_t *index, char *name);
+
+char* ffindex_get_data_by_index(char *data, ffindex_index_t *index, size_t entry_index);
+
+ffindex_entry_t* ffindex_get_entry_by_index(ffindex_index_t *index, size_t entry_index);
 
 ffindex_index_t* ffindex_index_parse(FILE *index_file, size_t num_max_entries);
 

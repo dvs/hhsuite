@@ -65,7 +65,6 @@ class Hit
   float* S;             // S[step] = match-match score contribution at alignment step
   float* S_ss;          // S_ss[step] = secondary structure score contribution
   float* P_posterior;   // P_posterior[step] = posterior prob for MM states (otherwise zero)
-  char* Xcons;          // consensus sequence for aligned states in internal representation (A=0 R=1 N=2 D=3 ...)
   int i1;               // First aligned residue in query
   int i2;               // Last aligned residue in query
   int j1;               // First aligned residue in template 
@@ -102,31 +101,31 @@ class Hit
   void DeleteIndices();
 
   // Compare an HMM with overlapping subalignments
-  void Viterbi(HMM& q, HMM& t, float** Sstruc=NULL);
+  void Viterbi(HMM* q, HMM* t, float** Sstruc=NULL);
 
   // Compare two HMMs with each other in lin space
-  void Forward(HMM& q, HMM& t, float** Pstruc=NULL);
+  void Forward(HMM* q, HMM* t, float** Pstruc=NULL);
 
   // Compare two HMMs with each other in lin space
-  void Backward(HMM& q, HMM& t);
+  void Backward(HMM* q, HMM* t);
 
    // Find maximum accuracy alignment (after running Forward and Backward algorithms)
-  void MACAlignment(HMM& q, HMM& t);
+  void MACAlignment(HMM* q, HMM* t);
 
   // Trace back alignment of two profiles based on matrices bXX[][]
-  void Backtrace(HMM& q, HMM& t);
+  void Backtrace(HMM* q, HMM* t);
 
   // Trace back alignment of two profiles based on matrices bXX[][]
-  void StochasticBacktrace(HMM& q, HMM& t, char maximize=0);
+  void StochasticBacktrace(HMM* q, HMM* t, char maximize=0);
 
   // Trace back MAC alignment of two profiles based on matrix bMM[][]
-  void BacktraceMAC(HMM& q, HMM& t);
+  void BacktraceMAC(HMM* q, HMM* t);
 
   // Calculate secondary structure score between columns i and j of two HMMs (query and template)
-  inline float ScoreSS(HMM& q, HMM& t, int i, int j, int ssm);
+  inline float ScoreSS(HMM* q, HMM* t, int i, int j, int ssm);
 
   // Calculate secondary structure score between columns i and j of two HMMs (query and template)
-  inline float ScoreSS(HMM& q, HMM& t, int i, int j);
+  inline float ScoreSS(HMM* q, HMM* t, int i, int j);
 
   // Calculate in log2 space the amino acid similarity score between columns i and j of two HMMs (query and template)
   inline float Score(float* qi, float* tj);
@@ -135,14 +134,14 @@ class Hit
   inline float ProbFwd(float* qi, float* tj);
 
   // Calculate score for a given alignment
-  void ScoreAlignment(HMM& q, HMM& t, int steps);
+  void ScoreAlignment(HMM* q, HMM* t, int steps);
 
   // Comparison (used to sort list of hits)
   int operator<(const Hit& hit2)  {return score_sort<hit2.score_sort;}
 
 
   /* // Merge HMM with next aligned HMM   */
-  /* void MergeHMM(HMM& Q, HMM& t, float wk[]); */
+  /* void MergeHMM(HMM* Q, HMM* t, float wk[]); */
 
   double** B_MM;        // Backward matrices
   
@@ -164,8 +163,8 @@ private:
   */
   double* scale;        // 
 
-  void InitializeBacktrace(HMM& q, HMM& t);
-  void InitializeForAlignment(HMM& q, HMM& t, bool vit=true);
+  void InitializeBacktrace(HMM* q, HMM* t);
+  void InitializeForAlignment(HMM* q, HMM* t, bool vit=true);
 };
 
 

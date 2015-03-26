@@ -1,33 +1,33 @@
 // hhworker.C
 
 ///////////////////////////////////////////////////////////////////////////////////////
-//// Do the pairwise comparison of q and *(t[bin]) for the database search
+//// Do the pairwise comparison of q and t[bin] for the database search
 //////////////////////////////////////////////////////////////////////////////////////
 void AlignByWorker(int bin)
 {
   // Prepare q ant t and compare
-  PrepareTemplate(*q,*(t[bin]),format[bin]);
+  PrepareTemplateHMM(q,t[bin],format[bin]);
 
   // Do HMM-HMM comparison, store results if score>SMIN, and try next best alignment
   for (hit[bin]->irep=1; hit[bin]->irep<=par.altali; hit[bin]->irep++)
     {
       if (par.forward==0)
         {
-	  hit[bin]->Viterbi(*q,*(t[bin]));
+	  hit[bin]->Viterbi(q,t[bin]);
           if (hit[bin]->irep>1 && hit[bin]->score <= SMIN) break;
-          hit[bin]->Backtrace(*q,*(t[bin]));
+          hit[bin]->Backtrace(q,t[bin]);
         }
       else if (par.forward==1)
         {
-          hit[bin]->Forward(*q,*(t[bin]));
-          hit[bin]->StochasticBacktrace(*q,*(t[bin]),1); // the 1 selects maximization instead of stochastic backtracing
+          hit[bin]->Forward(q,t[bin]);
+          hit[bin]->StochasticBacktrace(q,t[bin],1); // the 1 selects maximization instead of stochastic backtracing
         }
       else if (par.forward==2)
         {
-          hit[bin]->Forward(*q,*(t[bin]));
-          hit[bin]->Backward(*q,*(t[bin]));
-          hit[bin]->MACAlignment(*q,*(t[bin]));
-          hit[bin]->BacktraceMAC(*q,*(t[bin]));
+          hit[bin]->Forward(q,t[bin]);
+          hit[bin]->Backward(q,t[bin]);
+          hit[bin]->MACAlignment(q,t[bin]);
+          hit[bin]->BacktraceMAC(q,t[bin]);
         }
       hit[bin]->score_sort = hit[bin]->score_aass;
       if (hit[bin]->score <= SMIN) hit[bin]->lastrep=1; else hit[bin]->lastrep=0;
@@ -78,16 +78,16 @@ void AlignByWorker(int bin)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
-//// Realign q and with *(t[bin]) in all hits from same tempate using  MAC algorithm 
+//// Realign q and with t[bin] in all hits from same tempate using  MAC algorithm 
 //////////////////////////////////////////////////////////////////////////////////////
 void RealignByWorker(int bin)
 {
-  // Realign all hits pointed to by list List<void*>* hit[bin]->plist_phits;
+  // Realign all hits with same template, pointed to by list List<void*>* hit[bin]->plist_phits;
   // This list is set up in HHseach and HHblits at the beginning of perform_realign()
   Hit* hit_cur;
 
   // Prepare MAC comparison(s)
-  PrepareTemplate(*q,*(t[bin]),format[bin]);
+  PrepareTemplateHMM(q,t[bin],format[bin]);
   t[bin]->Log2LinTransitionProbs(1.0);
 
   hit[bin]->irep=1; 
@@ -96,6 +96,7 @@ void RealignByWorker(int bin)
     {
       // Set pointer hit_cur to next hit to be realigned
       hit_cur = (Hit*) hit[bin]->plist_phits->ReadNext();
+      // printf("Realigning %s, irep=%i\n",hit_cur->name,hit_cur->irep);  //?????????
 
       // Realign only around previous Viterbi hit
       // hit[bin] = *hit_cur; is not possible because the pointers to the DP matrices would be overwritten
@@ -109,10 +110,10 @@ void RealignByWorker(int bin)
       hit[bin]->realign_around_viterbi=true;
       
       // Align q to template in *hit[bin]
-      hit[bin]->Forward(*q,*(t[bin]));
-      hit[bin]->Backward(*q,*(t[bin]));
-      hit[bin]->MACAlignment(*q,*(t[bin]));
-      hit[bin]->BacktraceMAC(*q,*(t[bin]));
+      hit[bin]->Forward(q,t[bin]);
+      hit[bin]->Backward(q,t[bin]);
+      hit[bin]->MACAlignment(q,t[bin]);
+      hit[bin]->BacktraceMAC(q,t[bin]);
       
       // Overwrite *hit[bin] with Viterbi scores, Probabilities etc. of hit_cur
       hit[bin]->score      = hit_cur->score;

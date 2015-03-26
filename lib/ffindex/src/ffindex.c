@@ -34,12 +34,44 @@
 /* XXX Use page size? */
 #define FFINDEX_BUFFER_SIZE 4096
 
-char* ffindex_copyright_text = "Designed and implemented by Andreas W. Hauser <hauser@genzentrum.lmu.de>.";
+char* ffindex_copyright_text = "Designed and implemented by Andy Hauser <hauser@genzentrum.lmu.de>.";
 
 char* ffindex_copyright()
 {
   return ffindex_copyright_text;
 }
+
+
+/* Insert a memory chunk (string even without \0) into ffindex */
+int ffindex_insert_memory(FILE *data_file, FILE *index_file, size_t *offset, char *from_start, size_t from_length, char *name)
+{
+    int myerrno = 0;
+    size_t offset_before = *offset;
+    size_t write_size = fwrite(from_start, sizeof(char), from_length, data_file);
+    *offset += write_size;
+    if(from_length != write_size)
+      fferror_print(__FILE__, __LINE__, __func__, name);
+
+    /* Seperate by '\0' and thus also make sure at least one byte is written */
+    char buffer[1] = {'\0'};
+    fwrite(buffer, sizeof(char), 1, data_file);
+    *offset += 1;
+    if(ferror(data_file) != 0)
+      goto EXCEPTION_ffindex_insert_memory;
+
+    /* write index entry */
+    fprintf(index_file, "%s\t%zd\t%zd\n", name, offset_before, *offset - offset_before);
+
+
+    return myerrno;
+
+EXCEPTION_ffindex_insert_memory:
+    {
+      fferror_print(__FILE__, __LINE__, __func__, "");
+      return myerrno;
+    }
+}
+
 
 /* Insert all file from directory into ffindex */
 int ffindex_insert_list_file(FILE *data_file, FILE *index_file, size_t *start_offset, FILE *list_file)
@@ -161,7 +193,10 @@ char* ffindex_mmap_data(FILE *file, size_t* size)
   *size = sb.st_size;
   int fd =  fileno(file);
   if(fd < 0)
+  {
+    fferror_print(__FILE__, __LINE__, __func__, "mmap failed");
     return MAP_FAILED;
+  }
   return (char*)mmap(NULL, *size, PROT_READ, MAP_PRIVATE, fd, 0);
 }
 
@@ -197,7 +232,11 @@ ffindex_index_t* ffindex_index_parse(FILE *index_file, size_t num_max_entries)
 
   index->file = index_file;
   index->index_data = ffindex_mmap_data(index_file, &(index->index_data_size));
-  index->type = SORTED_ARRAY; /* Assume a sorted file for now */
+  if(index->index_data_size == 0)
+    warn("No entries in index file!");
+  if(index->index_data == MAP_FAILED)
+    return NULL;
+  index->type = SORTED_ARRAY; /* XXX Assume a sorted file for now */
   int i = 0;
   char* d = index->index_data;
   char* end;
@@ -217,18 +256,44 @@ ffindex_index_t* ffindex_index_parse(FILE *index_file, size_t num_max_entries)
   index->n_entries = i;
 
   if(index->n_entries == 0)
-    return NULL;
+    warn("index with 0 entries");
 
   return index;
 }
 
+ffindex_entry_t* ffindex_get_entry_by_index(ffindex_index_t *index, size_t entry_index)
+{
+  return &index->entries[entry_index];
+}
 
-/* Using a function fot this looks like overhead. But a more advanced data format,
+/* Using a function for this looks like overhead. But a more advanced data format,
  * say a compressed one, can do it's magic here. 
  */
-char* ffindex_get_filedata(char* data, size_t offset)
+char* ffindex_get_data_by_offset(char* data, size_t offset)
 {
   return data + offset;
+}
+
+
+char* ffindex_get_data_by_name(char *data, ffindex_index_t *index, char *name)
+{
+  ffindex_entry_t* entry = ffindex_bsearch_get_entry(index, name);
+
+  if(entry == NULL)
+    return NULL;
+
+  return ffindex_get_data_by_offset(data, entry->offset);
+}
+
+
+char* ffindex_get_data_by_index(char *data, ffindex_index_t *index, size_t entry_index)
+{
+  ffindex_entry_t* entry = ffindex_get_entry_by_index(index, entry_index);
+
+  if(entry == NULL)
+    return NULL;
+
+  return ffindex_get_data_by_offset(data, entry->offset);
 }
 
 
@@ -239,7 +304,7 @@ FILE* ffindex_fopen(char *data, ffindex_index_t *index, char *filename)
   if(entry == NULL)
     return NULL;
 
-  char *filedata = ffindex_get_filedata(data, entry->offset);
+  char *filedata = ffindex_get_data_by_offset(data, entry->offset);
   return fmemopen(filedata, entry->length, "r");
 }
 

@@ -10,8 +10,8 @@
 //// Constants
 /////////////////////////////////////////////////////////////////////////////////////
 
-EXTERN const char VERSION_AND_DATE[]="version 2.0.13 (Feb 2012)";
-EXTERN const char REFERENCE[]="Soding, J. Protein homology detection by HMM-HMM comparison. Bioinformatics 2005, 21, 951-960.\n";
+EXTERN const char VERSION_AND_DATE[]="version 2.0.15 (April 2012)";
+EXTERN const char REFERENCE[]="Remmert M, Biegert A, Hauser A, and Soding J.\nHHblits: Lightning-fast iterative protein sequence searching by HMM-HMM alignment.\nNat. Methods 9:173-175 (2011).\n";
 EXTERN const char COPYRIGHT[]="(C) Johannes Soeding, Michael Remmert, Andreas Biegert, Andreas Hauser\n";
 EXTERN const int MAXSEQ=65535; //max number of sequences in input alignment (must be <~30000 on cluster nodes)
 EXTERN const int LINELEN=524288; //max length of line read in from input files; must be >= MAXCOL
@@ -59,6 +59,7 @@ EXTERN const int a2s[]={ 0,14,11, 2, 1,13, 3, 5, 6, 7, 9, 8,10, 4,12,15,16,18,19
 
 enum transitions {M2M,M2I,M2D,I2M,I2I,D2M,D2D}; // index for transitions within a HMM
 enum pair_states {STOP=0,SAME=1,GD=2,IM=3,DG=4,MI=5,MS=6,ML=7,SM=8,LM=9,MM=10};
+
 
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -111,7 +112,6 @@ public:
   char scorefile[NAMELEN];// table of scores etc for all HMMs in searched database
   char indexfile[NAMELEN];// optional file containing indeices of aligned residues in given alignment
   char tfile[NAMELEN];    // template filename (in hhalign)
-  char buffer[NAMELEN];   // buffer to write results for other programs into
   char wfile[NAMELEN];    // weights file generated with hhformat
   char alitabfile[NAMELEN]; // where to write pairs of aligned residues (-atab option)
   char* dbfiles;          // database filenames, separated by colons
@@ -219,7 +219,8 @@ public:
   float csb;
   float csw;
   char clusterfile[NAMELEN];
-
+  bool nocontxt;
+  
   // HHblits
   int premerge;
   int dbsize;           // number of clusters of input database
@@ -284,33 +285,46 @@ void Parameters::SetDefaultPaths(char *program_path)
   strcat(strcpy(hhdata, hhlib), "/data");
   strcat(strcpy(clusterfile, hhdata), "/context_data.lib");
   strcat(strcpy(cs_library, hhdata), "/cs219.lib");
-
-  testf = fopen(clusterfile, "r");
-  if (testf) { fclose(testf); return;}
-
-  /* we did not find HHLIB, if called with full path or in dist dir, we can try relative to program path */
-  if(program_path != NULL)
-  {
-    strcat(strcpy(hhlib, program_path), "../lib/hh");
-    strcat(strcpy(hhdata, hhlib), "/data");
-    strcat(strcpy(clusterfile, hhdata), "/context_data.lib");
-    strcat(strcpy(cs_library, hhdata), "/cs219.lib");
-    testf = fopen(clusterfile, "r");
-    if (testf) { fclose(testf); return;}
-
-    strcat(strcpy(hhlib, program_path), "..");
-    strcat(strcpy(hhdata, hhlib), "/data");
-    strcat(strcpy(clusterfile, hhdata), "/context_data.lib");
-    strcat(strcpy(cs_library, hhdata), "/cs219.lib");	  
-    testf = fopen(clusterfile, "r");
-    if (testf) { fclose(testf); return;}
-  }
-
-  cerr<<endl<<"Error in "<<argv[0]<<": could not find context_data.lib and cs219.lib in '" << hhlib << "'.\n"
-              "Please set the HHLIB environment variable to the HH-suite directory\n"
-              "(Linux bash: export HHLIB=<hh_dir>, csh/tcsh: setenv HHLIB=<hh_dir>).\n"
-              "The missing files should be in $HHLIB/data/.\n ";
-  exit(2);
+  
+  testf = fopen(cs_library, "r");
+  if (testf) fclose(testf); 
+  else 
+    {
+      if (v>=3) cerr<<"WARNING in HHsuite: Could not open "<<cs_library<<"\n";
+      
+      /* we did not find HHLIB, if called with full path or in dist dir, we can try relative to program path */
+      if(program_path != NULL)
+	{
+	  strcat(strcpy(hhlib, program_path), "../lib/hh");
+	  strcat(strcpy(hhdata, hhlib), "/data");
+	  strcat(strcpy(clusterfile, hhdata), "/context_data.lib");
+	  strcat(strcpy(cs_library, hhdata), "/cs219.lib");
+	  testf = fopen(cs_library, "r");
+	  if (testf) fclose(testf);
+	  else 
+	    {
+	      if (v>=3) cerr<<"WARNING in HHsuite: Could not open "<<cs_library<<"\n";
+	      
+	      strcat(strcpy(hhlib, program_path), "..");
+	      strcat(strcpy(hhdata, hhlib), "/data");
+	      strcat(strcpy(clusterfile, hhdata), "/context_data.lib");
+	      strcat(strcpy(cs_library, hhdata), "/cs219.lib");	  
+	      testf = fopen(cs_library, "r");
+	      if (testf) fclose(testf);
+	      else 
+		if (v>=3) cerr<<"WARNING in HHsuite: Could not open "<<cs_library<<"\n";
+	    }
+	}
+    }
+  if (!testf)
+    {
+      cerr<<endl<<"Error in "<<argv[0]<<": could not find context_data.lib and cs219.lib in '" << hhlib << "'.\n"
+	"Please set the HHLIB environment variable to the HH-suite directory\n"
+	"(Linux bash: export HHLIB=<hh_dir>, csh/tcsh: setenv HHLIB=<hh_dir>).\n"
+	"The missing files should be in $HHLIB/data/.\n ";
+      exit(2);
+    }
+  return;
 }
 
 
@@ -368,7 +382,7 @@ void Parameters::SetDefaults()
   pcb=1.5f;                // significant reduction of pcs by Neff_M starts around Neff_M-1=pcb
   pcc=1.0f;                // pcs are reduced prop. to 1/Neff^pcc
   pcw=0.0f;                // wc>0 weighs columns according to their intra-clomun similarity
-
+  nocontxt=0;              // use context-specific pseudocounts by default, not substitution matrix pcs
 
   pre_pca=0.75f;            // PREFILTER - default values for substitution matrix pseudocounts 
   pre_pcb=1.75f;            // PREFILTER - significant reduction of pcs by Neff_M starts around Neff_M-1=pcb
@@ -459,7 +473,6 @@ void Parameters::SetDefaults()
   strcpy(infile,"stdin");
   strcpy(outfile,"");
   strcpy(pairwisealisfile,"");
-  strcpy(buffer,"buffer.txt");
   strcpy(scorefile,"");
   strcpy(indexfile,""); 
   strcpy(wfile,"");

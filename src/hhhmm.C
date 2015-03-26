@@ -59,7 +59,6 @@ HMM::HMM(int maxseqdis, int maxres)
   sa_dssp = new char[maxres];     // solvent accessibility state determined by dssp 0:-  1:A (absolutely buried) 2:B  3:C  4:D  5:E (exposed)
   ss_pred = new char[maxres];     // predicted secondary structure          0:-  1:H  2:E  3:C
   ss_conf = new char[maxres];     // confidence value of prediction         0:-  1:0 ... 10:9
-  Xcons   = NULL;                 // create only when needed: consensus sequence in internal representation (A=0 R=1 N=2 D=3 ...)
   l = new int[maxres];            // l[i] = pos. of j'th match state in aligment
   f = new float*[maxres];         // f[i][a] = prob of finding amino acid a in column i WITHOUT pseudocounts
   g = new float*[maxres];         // f[i][a] = prob of finding amino acid a in column i WITH pseudocounts
@@ -117,7 +116,6 @@ HMM::~HMM()
   delete[] sa_dssp;
   delete[] ss_pred;
   delete[] ss_conf;
-  delete[] Xcons;
   delete[] l;
   for (int i=0; i<par.maxres; i++) if (f[i]) delete[] f[i]; else break;
   for (int i=0; i<par.maxres; i++) if (g[i]) delete[] g[i]; else break;
@@ -164,9 +162,6 @@ HMM& HMM::operator=(HMM& q)
       ss_conf[i]=q.ss_conf[i];
       l[i]=q.l[i];
     }
-  if (q.Xcons)
-    for (int i=0; i<=L+1; ++i)
-      Xcons[i]  =q.Xcons[i];
 
   n_display=q.n_display;
   n_seqs=q.n_seqs;
@@ -193,12 +188,12 @@ HMM& HMM::operator=(HMM& q)
   Neff_HMM=q.Neff_HMM;
 
   strcpy(longname,q.longname);
-  strmcpy(name,q.name,NAMELEN);
-  strmcpy(file,q.file,NAMELEN);
-  strmcpy(fam,q.fam,NAMELEN);
-  strmcpy(sfam,q.sfam,IDLEN);
-  strmcpy(fold,q.fold,IDLEN);
-  strmcpy(cl,q.cl,IDLEN);
+  strmcpy(name,q.name,NAMELEN-1);
+  strmcpy(file,q.file,NAMELEN-1);
+  strmcpy(fam,q.fam,NAMELEN-1);
+  strmcpy(sfam,q.sfam,IDLEN-1);
+  strmcpy(fold,q.fold,IDLEN-1);
+  strmcpy(cl,q.cl,IDLEN-1);
 
   lamda=q.lamda;
   mu=q.mu;
@@ -227,12 +222,12 @@ int HMM::Read(FILE* dbf, char* path)
   static int warn=0;
 
   //Delete name and seq matrices
-  if (!dont_delete_seqs) // don't delete sname and seq if flat copy to hit object has been made
+  if (!dont_delete_seqs) // Delete all sname and seq if no flat copy to hit object has been made
     {
       for (int k=0; k<n_seqs; k++) delete [] sname[k];
       for (int k=0; k<n_seqs; k++) delete [] seq[k];
     }
-  else // Delete all not shown sequences (lost otherwise)
+  else // Otherwise, delete only sequences not diplayed (lost otherwise)
     {
       if (n_seqs > n_display) {
 	for (int k=n_display; k<n_seqs; k++) delete [] sname[k];
@@ -266,8 +261,8 @@ int HMM::Read(FILE* dbf, char* path)
           ptr=strscn(line+4);              //advance to first non-white-space character
           if (ptr)
             {
-              strmcpy(longname,ptr,DESCLEN); //copy full name to longname
-              strmcpy(name,ptr,NAMELEN);     //copy longname to name...
+              strmcpy(longname,ptr,DESCLEN-1); //copy full name to longname
+              strmcpy(name,ptr,NAMELEN-1);     //copy longname to name...
               strcut(name);                    //...cut after first word...
             }
           else
@@ -281,13 +276,13 @@ int HMM::Read(FILE* dbf, char* path)
       else if (!strcmp("FAM",str3))
         {
           ptr=strscn(line+3);              //advance to first non-white-space character
-          if (ptr) strmcpy(fam,ptr,IDLEN); else strcpy(fam,""); //copy family name to basename
+          if (ptr) strmcpy(fam,ptr,IDLEN-1); else strcpy(fam,""); //copy family name to basename
           ScopID(cl,fold,sfam,fam);        //get scop classification from basename (e.g. a.1.2.3.4)
         }
 
       else if (!strcmp("FILE",str4))
         {
-          if (path) strmcpy(file,path,NAMELEN); else *file='\0'; // copy path to file variable
+          if (path) strmcpy(file,path,NAMELEN-1); else *file='\0'; // copy path to file variable
           ptr=strscn(line+4);              //advance to first non-white-space character
           if (ptr)
             strncat(file,ptr,NAMELEN-1-strlen(file));   // append file name read from file to path
@@ -341,7 +336,11 @@ int HMM::Read(FILE* dbf, char* path)
               if (line[0]=='>') //line contains sequence name
                 {
                   if (k>=MAXSEQDIS-1) //maximum number of allowable sequences exceeded
-                    {while (fgetline(line,LINELEN-1,dbf) && line[0]!='#'); break;}
+                    {
+		      if (v>=2) cerr<<"WARNING in "<<program_name<<": number of sequences in "<<file<<" exceeds maximum allowed number of "<<MAXSEQDIS<<". Skipping sequences.\n";
+		      while (fgetline(line,LINELEN-1,dbf) && line[0]!='#'); 
+		      break;
+		    }
                   k++;
                   if      (!strncmp(line,">ss_dssp",8)) nss_dssp=k;
                   else if (!strncmp(line,">sa_dssp",8)) nsa_dssp=k;
@@ -666,7 +665,7 @@ int HMM::ReadHMMer(FILE* dbf, char* filestr)
       if (!strcmp("NAME",str4) && name[0]=='\0')
         {
           ptr=strscn(line+4);             // advance to first non-white-space character
-          strmcpy(name,ptr,NAMELEN);      // copy full name to name
+          strmcpy(name,ptr,NAMELEN-1);    // copy full name to name
           strcut(name);                   // ...cut after first word...
           if (v>=4) cout<<"Reading in HMM "<<name<<":\n";
         }
@@ -674,7 +673,7 @@ int HMM::ReadHMMer(FILE* dbf, char* filestr)
       else if (!strcmp("ACC ",str4))
         {
           ptr=strscn(line+4);              // advance to first non-white-space character
-          strmcpy(longname,ptr,DESCLEN);   // copy Accession id to longname...
+          strmcpy(longname,ptr,DESCLEN-1); // copy Accession id to longname...
         }
 
       else if (!strcmp("DESC",str4))
@@ -682,10 +681,11 @@ int HMM::ReadHMMer(FILE* dbf, char* filestr)
           ptr=strscn(line+4);              // advance to first non-white-space character
           if (ptr)
             {
-              strmcpy(desc,ptr,DESCLEN);   // copy description to name...
+              strmcpy(desc,ptr,DESCLEN-1); // copy description to name...
               strcut(ptr);                 // ...cut after first word...
             }
-          if (!ptr || ptr[1]!='.' || strchr(ptr+3,'.')==NULL) strcpy(fam,""); else strmcpy(fam,ptr,NAMELEN); // could not find two '.' in name?
+          if (!ptr || ptr[1]!='.' || strchr(ptr+3,'.')==NULL) strcpy(fam,""); 
+	  else strmcpy(fam,ptr,NAMELEN-1); // could not find two '.' in name?
         }
 
       else if (!strcmp("LENG",str4))
@@ -1124,7 +1124,7 @@ int HMM::ReadHMMer3(FILE* dbf, char* filestr)
       if (!strcmp("NAME",str4) && name[0]=='\0')
         {
           ptr=strscn(line+4);             // advance to first non-white-space character
-          strmcpy(name,ptr,NAMELEN);      // copy full name to name
+          strmcpy(name,ptr,NAMELEN-1);      // copy full name to name
           strcut(name);                   // ...cut after first word...
           if (v>=4) cout<<"Reading in HMM "<<name<<":\n";
         }
@@ -1132,7 +1132,7 @@ int HMM::ReadHMMer3(FILE* dbf, char* filestr)
       else if (!strcmp("ACC ",str4))
         {
           ptr=strscn(line+4);              // advance to first non-white-space character
-          strmcpy(longname,ptr,DESCLEN);   // copy Accession id to longname...
+          strmcpy(longname,ptr,DESCLEN-1);   // copy Accession id to longname...
         }
 
       else if (!strcmp("DESC",str4))
@@ -1140,11 +1140,12 @@ int HMM::ReadHMMer3(FILE* dbf, char* filestr)
           ptr=strscn(line+4);              // advance to first non-white-space character
           if (ptr)
             {
-              strmcpy(desc,ptr,DESCLEN);   // copy description to name...
+              strmcpy(desc,ptr,DESCLEN-1);   // copy description to name...
               desc[DESCLEN-1]='\0';
               strcut(ptr);                 // ...cut after first word...
             }
-          if (!ptr || ptr[1]!='.' || strchr(ptr+3,'.')==NULL) strcpy(fam,""); else strmcpy(fam,ptr,NAMELEN); // could not find two '.' in name?
+          if (!ptr || ptr[1]!='.' || strchr(ptr+3,'.')==NULL) strcpy(fam,""); 
+	  else strmcpy(fam,ptr,NAMELEN-1); // could not find two '.' in name?
         }
 
       else if (!strcmp("LENG",str4))
@@ -1558,8 +1559,8 @@ void HMM::AddTransitionPseudocounts(float gapd, float gape, float gapf, float ga
   float pM2M, pM2I, pM2D, pI2I, pI2M, pD2D, pD2M;
   float p0,p1,p2;
   if (par.gapb<=0) return;
-  if (trans_lin==1) {fprintf(stderr,"Error: Adding transition pseudocounts to linear representation of %s not allowed. Please report this error to the HHsearch developers.\n",name); exit(6);}
-  if (trans_lin==2) {fprintf(stderr,"Error: Adding transition pseudocounts twice is %s not allowed. Please report this error to the HHsearch developers.\n",name); exit(6);}
+  if (trans_lin==1) {fprintf(stderr,"Error in %s: Adding transition pseudocounts to linear representation of %s not allowed. Please report this error to the HHsearch developers.\n",par.argv[0],name); exit(6);}
+  if (trans_lin==2) {fprintf(stderr,"Error in %s: Adding transition pseudocounts twice is %s not allowed. Please report this error to the HHsearch developers.\n",par.argv[0],name); exit(6);}
   trans_lin=2;
 
   // Calculate pseudocount transition probabilities
@@ -1772,7 +1773,7 @@ void HMM::CalculateAminoAcidBackground()
 
 /////////////////////////////////////////////////////////////////////////////////////
 // Add amino acid pseudocounts to HMM and calculate average protein aa probabilities pav[a]
-// Pseudocounts: t.p[i][a] = (1-tau)*f[i][a] + tau*g[i][a]
+// Pseudocounts: p[i][a] = (1-tau)*f[i][a] + tau*g[i][a]
 /////////////////////////////////////////////////////////////////////////////////////
 void HMM::AddAminoAcidPseudocounts(char pcm, float pca, float pcb, float pcc)
 {
@@ -1799,8 +1800,7 @@ void HMM::AddAminoAcidPseudocounts(char pcm, float pca, float pcb, float pcc)
         for (a=0; a<20; ++a)
           p[i][a] = (1.-tau)*f[i][a] + tau * g[i][a];
       break;
-    case 2: //divergence-dependent pseudocounts
-    case 4: //divergence-dependent pseudocounts and rate matrix rescaling
+    case 2: // diversity-dependent (i.e, Neff_M[i]-dependent) pseudocounts
       if (par.pcc==1.0f)
         for (i=1; i<=L; ++i)
           {
@@ -1816,7 +1816,7 @@ void HMM::AddAminoAcidPseudocounts(char pcm, float pca, float pcb, float pcc)
               p[i][a] = (1.-tau)*f[i][a] + tau * g[i][a];
           }
       break;
-    case 3: // constant-divergence pseudocounts
+    case 3: // constant-diversity pseudocounts // Is this still used? => scrap? (JS) 
       for (i=1; i<=L; ++i)
         {
           float x = Neff_M[i]/pcb;
@@ -1962,9 +1962,9 @@ void HMM::DivideBySqrtOfLocalBackgroundFreqs(int D) // 2*D+1 is window size
 
 /////////////////////////////////////////////////////////////////////////////////////
 // Factor Null model into HMM t
-// !!!!! ATTENTION!!!!!!!  after this t.p is not the same as after adding pseudocounts !!!
+// !!!!! ATTENTION!!!!!!!  after this t->p is not the same as after adding pseudocounts !!!
 /////////////////////////////////////////////////////////////////////////////////////
-void HMM::IncludeNullModelInHMM(HMM& q, HMM& t, int columnscore )
+void HMM::IncludeNullModelInHMM(HMM* q, HMM* t, int columnscore )
 {
 
   int i,j;         //query and template match state indices
@@ -1975,51 +1975,51 @@ void HMM::IncludeNullModelInHMM(HMM& q, HMM& t, int columnscore )
     {
     default:
     case 0: // Null model with background prob. from database
-      for (j=0; j<=t.L+1; ++j)
+      for (j=0; j<=t->L+1; ++j)
 	for (a=0; a<20; ++a)
-	  t.p[j][a] /= pb[a];
+	  t->p[j][a] /= pb[a];
       break;
 
     case 1: // Null model with background prob. equal average from query and template
       float pnul[NAA]; // null model probabilities used in comparison (only set in template/db HMMs)
-      for (a=0; a<20; ++a) pnul[a] = 0.5*(q.pav[a]+t.pav[a]);
-      for (j=0; j<=t.L+1; ++j)
+      for (a=0; a<20; ++a) pnul[a] = 0.5*(q->pav[a]+t->pav[a]);
+      for (j=0; j<=t->L+1; ++j)
 	for (a=0; a<20; ++a)
-	  t.p[j][a] /= pnul[a];
+	  t->p[j][a] /= pnul[a];
       break;
 
     case 2: // Null model with background prob. from template protein
-      for (j=0; j<=t.L+1; ++j)
+      for (j=0; j<=t->L+1; ++j)
 	for (a=0; a<20; ++a)
-	  t.p[j][a] /= t.pav[a];
+	  t->p[j][a] /= t->pav[a];
       break;
 
     case 3: // Null model with background prob. from query protein
-      for (j=0; j<=t.L+1; ++j)
+      for (j=0; j<=t->L+1; ++j)
 	for (a=0; a<20; ++a)
-	  t.p[j][a] /= q.pav[a];
+	  t->p[j][a] /= q->pav[a];
       break;
 
     case 5: // Null model with local background prob. from template and query protein
-      //      if (!q.divided_by_local_bg_freqs) q.DivideBySqrtOfLocalBackgroundFreqs(par.half_window_size_local_aa_bg_freqs);
-      if (!q.divided_by_local_bg_freqs) InternalError("No local amino acid bias correction on query HMM!");
-      if (!t.divided_by_local_bg_freqs) t.DivideBySqrtOfLocalBackgroundFreqs(par.half_window_size_local_aa_bg_freqs);
+      //      if (!q->divided_by_local_bg_freqs) q->DivideBySqrtOfLocalBackgroundFreqs(par.half_window_size_local_aa_bg_freqs);
+      if (!q->divided_by_local_bg_freqs) InternalError("No local amino acid bias correction on query HMM!");
+      if (!t->divided_by_local_bg_freqs) t->DivideBySqrtOfLocalBackgroundFreqs(par.half_window_size_local_aa_bg_freqs);
       break;
 
     case 10: // Separated column scoring for Stochastic Backtracing (STILL USED??)
-      for (i=0; i<=q.L+1; ++i)
+      for (i=0; i<=q->L+1; ++i)
         {
           float sum = 0.0;
-          for (a=0; a<20; ++a) sum += pb[a]*q.p[i][a];
+          for (a=0; a<20; ++a) sum += pb[a]*q->p[i][a];
           sum = 1.0/sqrt(sum);
-          for (a=0; a<20; ++a) q.p[i][a]*=sum;
+          for (a=0; a<20; ++a) q->p[i][a]*=sum;
         }
-      for (j=0; j<=t.L+1; j++)
+      for (j=0; j<=t->L+1; j++)
         {
           float sum = 0.0;
-          for (a=0; a<20; ++a) sum += pb[a]*t.p[j][a];
+          for (a=0; a<20; ++a) sum += pb[a]*t->p[j][a];
           sum = 1.0/sqrt(sum);
-          for (a=0; a<20; ++a) t.p[j][a]*=sum;
+          for (a=0; a<20; ++a) t->p[j][a]*=sum;
         }
       break;
 
@@ -2034,9 +2034,9 @@ void HMM::IncludeNullModelInHMM(HMM& q, HMM& t, int columnscore )
       cout<<"\nAverage amino acid frequencies\n";
       cout<<"         A    R    N    D    C    Q    E    G    H    I    L    K    M    F    P    S    T    W    Y    V\n";
       cout<<"Q:    ";
-      for (a=0; a<20; ++a) printf("%4.1f ",100*q.pav[a]);
+      for (a=0; a<20; ++a) printf("%4.1f ",100*q->pav[a]);
       cout<<"\nT:    ";
-      for (a=0; a<20; ++a) printf("%4.1f ",100*t.pav[a]);
+      for (a=0; a<20; ++a) printf("%4.1f ",100*t->pav[a]);
       cout<<"\npb:   ";
       for (a=0; a<20; ++a) printf("%4.1f ",100*pb[a]);
     }
@@ -2048,8 +2048,8 @@ void HMM::IncludeNullModelInHMM(HMM& q, HMM& t, int columnscore )
   //     float sum=0;
   //     for (a=0; a<20; ++a)
   // 	{
-  // 	  sum+=t.p[i][a];
-  // 	  printf("%4.1f ",100*t.p[i][a]);
+  // 	  sum+=t->p[i][a];
+  // 	  printf("%4.1f ",100*t->t->p[i][a]);
   // 	}
   //     printf("  sum=%5.3f\n",sum);
   //   }
@@ -2299,15 +2299,13 @@ void HMM::AddSSPrediction(char seq_pred[], char seq_conf[])
 {
   unsigned int i;
 
-  int m;
-
   if ((int)strlen(seq_pred)!=L+1)
     {
       cerr<<"WARNING: Could not add secondary struture prediction - unequal length!\n";
       return;
     }
 
-if (nss_pred >= 0 && nss_conf >= 0)
+  if (nss_pred >= 0 && nss_conf >= 0)
     {
       strcpy(seq[nss_pred],seq_pred);
       for (i=0; i<strlen(seq_pred); i++) ss_pred[i]=ss2i(seq_pred[i]);
@@ -2316,11 +2314,11 @@ if (nss_pred >= 0 && nss_conf >= 0)
     }
   else
     {
-      // shift existing sequences
-      for (m = n_display-1; m >= 0; --m) 
+      // Shift existing sequences two positions down
+      for (int k=imin(n_display-1,MAXSEQDIS-3); k>=0; --k) 
 	{
-	  seq[m+2] = seq[m];
-	  sname[m+2] = sname[m];
+	  seq[k+2] = seq[k];
+	  sname[k+2] = sname[k];
 	}
       if (nss_dssp >= 0) { nss_dssp += 2; }
       if (nsa_dssp >= 0) { nsa_dssp += 2; }
