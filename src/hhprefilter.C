@@ -763,7 +763,7 @@ void init_no_prefiltering()
       exit(4);
     }
 
-  char word[LINELEN];
+  char word[NAMELEN];
   FILE* dbf = NULL;
   dbf = fopen(db,"rb");
   if (!dbf) OpenFileError(db);
@@ -820,9 +820,9 @@ void init_prefilter()
   if (v>=3) printf("Number of column-state sequences: %6i\n",par.dbsize);
 
   X = (unsigned char*)memalign(16,LDB*sizeof(unsigned char));                     // database string (concatenate all DB-seqs)
-  first = (unsigned char**)memalign(16,(2*par.dbsize)*sizeof(unsigned char*));    // first characters of db sequences
-  length = (int*)memalign(16,(2*par.dbsize)*sizeof(int));                         // lengths of db sequences
-  dbnames = new char*[2*par.dbsize];                                              // names of db sequences
+  first = (unsigned char**)memalign(16,(par.dbsize+2)*sizeof(unsigned char*));    // first characters of db sequences. Was (par.dbsize*2). Why??
+  length = (int*)memalign(16,(par.dbsize+2)*sizeof(int));                         // lengths of db sequences Was (par.dbsize*2). Why??
+  dbnames = new char*[par.dbsize+2];                                              // names of db sequences   Was (par.dbsize*2). Why??
 
   /////////////////////////////////////////
   // Read in database
@@ -864,10 +864,10 @@ void init_prefilter()
 		  ++len;
 	      	}
 	      else
-	      	cerr<<endl<<"WARNING: ignoring invalid symbol \'"<< *c <<"\' of "<<db<<"\n";
+	      	cerr<<endl<<"WARNING: ignoring invalid symbol with ASCII code "<<int(*c)<<" in "<<pos<<" of sequence "<<dbnames[num_dbs]<<" of file "<<db<<"\n";
 	      c++;
 #else
-	      X[pos++]= (unsigned char)(cs::AS219::kCharToInt[*c++]);
+	      X[pos++]= (unsigned char)(cs::AS219::kCharToInt[*c++]); // map printable characters to range 0-219
 	      ++len;
 #endif
 
@@ -1086,7 +1086,7 @@ void prefilter_db()
     }
   if (v>=2)
     {
-      printf("\nHMMs passed prefilter 1 (gapless profile-profile alignment)  : %6i\n", count_dbs);
+      printf("\nHMMs passed 1st prefilter (gapless profile-profile alignment)  : %6i\n", count_dbs);
       //printf("%6i hits through preprefilter!\n", count_dbs);
     }
   if (print_elapsed) ElapsedTimeSinceLastCall("(ungapped preprefilter)");
@@ -1166,7 +1166,7 @@ void prefilter_db()
 
       if (count_dbs >= par.maxnumdb) 
 	{
-	  fprintf(stderr,"WARNING: Number of hits passing prefilter 2 reduced from %6i to allowed maximum of %i.\n", (int)hits.size(),par.maxnumdb);
+	  fprintf(stderr,"WARNING: Number of hits passing 2nd prefilter (reduced from %6i to allowed maximum of %i).\n", (int)hits.size(),par.maxnumdb);
 	  fprintf(stderr,"You can increase the allowed maximum using the -maxfilt <max> option.\n\n");
 	  break;
 	}

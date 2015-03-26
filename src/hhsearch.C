@@ -117,7 +117,7 @@ const int MAXBINS=384;    // maximum number of bins (positions in thread queue)
 enum bin_states {FREE=0, SUBMITTED=1, RUNNING=2};
 int v1;                   // verbose mode
 int threads=0;            // number of threads (apart from the main thread which reads from the databases file) 0:no multithreading
-int bins;                 // number of bins; jobs gets allocated to a FREE bin were they are waiting for execution by a thread
+int bins;                 // number of bins; jobs gets allocated to a FREE bin were they are waiting for exection by a thread
 char bin_status[MAXBINS]; // The status for each bin is FREE, SUBMITTED, or RUNNING
 int jobs_running;         // number of active jobs, i.e. number of bins set to RUNNING
 int jobs_submitted;       // number of submitted jobs, i.e. number of bins set to SUBMITTED
@@ -391,7 +391,8 @@ void help_other()
   printf(" -opt  <file>   parameter optimization mode (def=off): return sum of ranks \n");
   printf("                of true positives (same superfamily) for minimization      \n");
   printf("                and write result into file                                 \n");
-  printf(" -maxres <int>  max number of HMM columns, scales linearly with needed memory (def=%5i)\n",par.maxres);
+  printf(" -maxres <int>  max number of HMM columns (def=%5i)             \n",par.maxres);
+  printf(" -maxmem [1,inf[ max available memory in GB (def=%.1f)          \n",par.maxmem);
   printf(" -scores <file> write scores for all pairwise comparisions to file         \n");
 }
 
@@ -498,7 +499,7 @@ void ProcessArguments(int argc, char** argv)
 	{
 	  if (++i>=argc || argv[i][0]=='-') 
 	    {help(); cerr<<endl<<"Error in "<<program_name<<": no query file following -atab\n"; exit(4);}
-	  else strncpy(par.alitabfile,argv[i],NAMELEN);
+	  else strmcpy(par.alitabfile,argv[i],NAMELEN);
 	}
       else if (!strcmp(argv[i],"-h")|| !strcmp(argv[i],"-help"))
         {
@@ -603,6 +604,7 @@ void ProcessArguments(int argc, char** argv)
 	par.maxcol=2*par.maxres;
       }
       else if (!strncmp(argv[i],"-cpu",4) && (i<argc-1)) threads=atoi(argv[++i]);
+      else if (!strcmp(argv[i],"-maxmem") && (i<argc-1)) {par.maxmem=atof(argv[++i]);}
       else if (!strcmp(argv[i],"-corr") && (i<argc-1)) par.corr=atof(argv[++i]);
       else if (!strcmp(argv[i],"-ovlp") && (i<argc-1)) par.min_overlap=atoi(argv[++i]);
       else if (!strcmp(argv[i],"-dbstrlen") && (i<argc-1)) par.maxdbstrlen=atoi(argv[++i]);
@@ -632,13 +634,13 @@ void ProcessArguments(int argc, char** argv)
 void perform_realign(char *dbfiles[], int ndb)
 {
   q->Log2LinTransitionProbs(1.0); // transform transition freqs to lin space if not already done
-  
-  const float MEMSPACE_DYNPROG = 3.0*1024.0*1024.0*1024.0;
   int nhits=0;
-  int Lmax=0;      // length of longest HMM to be realigned
-  int Lmaxmem=(int)((float)MEMSPACE_DYNPROG/q->L/6.0/8.0/bins); // longest allowable length of database HMM
   int N_aligned=0;
   
+  // Longest allowable length of database HMM (backtrace: 5 chars, fwd: 1 double, bwd: 1 double 
+  long int Lmaxmem=((par.maxmem-0.5)*1024*1024*1024)/(2*sizeof(double)+8)/q->L/bins;
+  long int Lmax=0;      // length of longest HMM to be realigned
+    
   // phash_plist_realignhitpos->Show(dbfile) is pointer to list with template indices and their ftell positions.
   // This list can be sorted by ftellpos to access one template after the other efficiently during realignment
   Hash< List<Realign_hitpos>* >* phash_plist_realignhitpos;
@@ -702,10 +704,10 @@ void perform_realign(char *dbfiles[], int ndb)
       Lmax=Lmaxmem;
       if (v>=1) 
 	{
-	  cerr<<"WARNING: Realigning sequences only up to length "<<Lmaxmem<<" due to limited memory."<<endl;
-	  cerr<<"This is genarally unproboblematic but may lead to slightly sub-optimal alignments."<<endl; 
-	  //	      cerr<<"You can allow HHblits to use more than "<<par.maxmem<<"GB of memory with option -mem <GB>"<<endl;  // still to be implemented
-	  if (bins>1) cerr<<"Note: you can reduce memory requirement by lowering N in the -cpu N option."<<endl;
+	  cerr<<"WARNING: Realigning sequences only up to length "<<Lmaxmem<<"."<<endl;
+	  cerr<<"This is genarally unproboblematic but may lead to slightly sub-optimal alignments for longer sequences."<<endl;
+ 	  cerr<<"You can increase available memory using the -maxmem <GB> option (currently "<<par.maxmem<<" GB)."<<endl; // still to be implemented
+	  cerr<<"The maximum length realignable is approximately (maxmem-0.5GB)/query_length/(cpus+1)/24B."<<endl;
 	}
     }
   
@@ -1170,7 +1172,7 @@ void perform_realign(char *dbfiles[], int ndb)
   // Delete array_plist_phits with lists
   for (int index=0; index<N_searched; index++) 
     if (array_plist_phits[index]) delete(array_plist_phits[index]); // delete list to which array[index] points
-  delete(array_plist_phits); 
+  delete[](array_plist_phits); 
 }
 
 
@@ -1247,6 +1249,7 @@ int main(int argc, char **argv)
   if (par.pca<0.001) par.pca=0.001; // to avoid log(0)
   if (par.b>par.B) par.B=par.b;
   if (par.z>par.Z) par.Z=par.z;
+  if (par.maxmem<1.0) {cerr<<"Warning: setting -maxmem to its minimum allowed value of 1.0\n"; par.maxmem=1.0;}
 
   // Input parameters
   if (v>=3)

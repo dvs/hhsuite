@@ -456,7 +456,7 @@ void ProcessArguments(int argc, char** argv)
 	{
 	  if (++i>=argc || argv[i][0]=='-') 
 	    {help(); cerr<<endl<<"Error in "<<program_name<<": no query file following -atab\n"; exit(4);}
-	  else strncpy(par.alitabfile,argv[i],NAMELEN);
+	  else strmcpy(par.alitabfile,argv[i],NAMELEN);
 	}
       else if (!strcmp(argv[i],"-index"))
 	{
@@ -882,13 +882,13 @@ int main(int argc, char **argv)
 	if (strscn(line)==NULL) continue;
 	if (!strncmp("#QNAME",line,6)) {
 	  ptr=strscn(line+6);             // advance to first non-white-space character
-	  strncpy(q.name,ptr,NAMELEN-1);    // copy full name to name
+	  strmcpy(q.name,ptr,NAMELEN);    // copy full name to name
 	  strcut(q.name);
 	  continue;
 	} 
 	else if (!strncmp("#TNAME",line,6)) {
 	  ptr=strscn(line+6);             // advance to first non-white-space character
-	  strncpy(t.name,ptr,NAMELEN-1);    // copy full name to name
+	  strmcpy(t.name,ptr,NAMELEN);    // copy full name to name
 	  strcut(t.name); 
 	  continue;
 	} 
@@ -906,23 +906,10 @@ int main(int argc, char **argv)
 
     printf("\nAligned %s with %s: Score = %-7.2f \n",q.name,t.name,hit.score);
 
-    // Print 'Done!'
-    FILE* outf=NULL;
-    if (!strcmp(par.outfile,"stdout")) printf("Done!\n");
-    else
-      {
-	if (*par.outfile)
-	  {
-	    outf=fopen(par.outfile,"a"); //open for append
-	    fprintf(outf,"Done!\n");
-	    fclose(outf);
-	  }
-	if (v>=2) printf("Done\n");
-      }
-
+    if (par.outfile && v>=1) fprintf(stderr,"\nWarning: no output file is written when -index option is used.\n");
     hit.DeleteIndices();
 
-    return(0);
+    exit(0);
   } 
   ////////////////////////////////////////////////////////////////
 
@@ -1188,25 +1175,25 @@ int main(int argc, char **argv)
 	    s[i][j]=hit.Score(q.p[i],t.p[j]) + hit.ScoreSS(q,t,i,j) + par.shift;	  }
  	    //printf("%-3i %-3i %7.3f %7.3f\n",i,j,s[i][j],hit.Score(q.p[i],t.p[j]));
       
-      if (0) 
-	{
-	  FILE* aaf = fopen("aa.scores","w");
-	  FILE* asf = fopen("as.scores","w");
-	  if (aaf) OpenFileError("aa.scores");
-	  if (asf) OpenFileError("as.scores");
-	  for(i=1; i<=q.L; i++)
-	    {
-	      for (j=1; j<=t.L; j++) // Loop through template positions j
-		{
-		  fprintf(aaf,"%9.2E ",s[i][j]);
-		  fprintf(asf,"%9.2E ",s[i][j]+Sstruc[i][j]);
-		}
-	      fprintf(aaf,"\n");
-	      fprintf(asf,"\n");
-	    }
-      	  fclose(aaf);
-      	  fclose(asf);
-	}
+      // if (0) 
+      // 	{
+      // 	  FILE* aaf = fopen("aa.scores","w");
+      // 	  FILE* asf = fopen("as.scores","w");
+      // 	  if (aaf) OpenFileError("aa.scores");
+      // 	  if (asf) OpenFileError("as.scores");
+      // 	  for(i=1; i<=q.L; i++)
+      // 	    {
+      // 	      for (j=1; j<=t.L; j++) // Loop through template positions j
+      // 		{
+      // 		  fprintf(aaf,"%9.2E ",s[i][j]);
+      // 		  fprintf(asf,"%9.2E ",s[i][j]+Sstruc[i][j]);
+      // 		}
+      // 	      fprintf(aaf,"\n");
+      // 	      fprintf(asf,"\n");
+      // 	    }
+      // 	  fclose(aaf);
+      // 	  fclose(asf);
+      // 	}
       
       // Choose scale automatically
       if (dotscale>20) 

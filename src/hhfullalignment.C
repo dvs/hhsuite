@@ -178,7 +178,7 @@ void FullAlignment::Build(HMM& q, Hit& hit)
       {
 	char qc=qa->seq[  q.nfirst][ qa->m[  q.nfirst][hit.i[step]] ];
 	char tc=ta->seq[hit.nfirst][ ta->m[hit.nfirst][hit.j[step]] ];
-	if (qc==tc) identities++;  // count identical amino acids
+	if (qc==tc && qc!='-') identities++;  // count identical amino acids
 	score_sim += S[(int)aa2i(qc)][(int)aa2i(tc)];
  	//fprintf(stderr,"%3i %3i  %3i %3i  %3i %1c %1c %6.2f %6.2f %6.2f %6.2f  \n",step,hit.nsteps,hit.i[step],hit.j[step],int(state),qc,tc,S[(int)aa2i(qc)][(int)aa2i(tc)],score_sim,hit.P_posterior[step],hit.sum_of_probs); //DEBUG (P_posterior not defined for Viterbi!)
       }    
@@ -199,7 +199,7 @@ void FullAlignment::Build(HMM& q, Hit& hit)
 	} 
       else if (symbol[hh]=='T') 
 	{
-	  // Gap in target (MI or DG state)
+	  // Gap in template (MI or DG state)
 	  symbol[hh]=' ';
 	  for (k=0; k<ta->n; k++) if (ta->s[k][hh]=='.') ta->s[k][hh]='-';
 	}
@@ -249,8 +249,7 @@ void FullAlignment::PrintHHR(FILE* outf, Hit& hit)
 	  if (k==qa->nss_dssp && !par.showdssp) continue;
 	  if ((k==qa->nss_pred || k==qa->nss_conf) && !par.showpred) continue;
 	  if (k==qa->nss_conf && !par.showconf) continue;
-	  strncpy(namestr,qa->sname[k],NAMELEN-2);
-	  namestr[NAMELEN-1]='\0';
+	  strmcpy(namestr,qa->sname[k],NAMELEN);
 	  strcut(namestr);
 	  fprintf(outf,"Q %-*.*s      ",NLEN,NLEN,namestr);
 	  if (k==qa->nss_pred && qa->nss_conf>=0)
@@ -264,8 +263,7 @@ void FullAlignment::PrintHHR(FILE* outf, Hit& hit)
       for (k=0; k<qa->n; k++)
 	{
  	  if (k==qa->nss_dssp || k==qa->nsa_dssp || k==qa->nss_pred || k==qa->nss_conf || k==qa->ncons) continue;
-	  strncpy(namestr,qa->sname[k],NAMELEN-2);
-	  namestr[NAMELEN-1]='\0';
+	  strmcpy(namestr,qa->sname[k],NAMELEN);
 	  strcut(namestr);
 	  fprintf(outf,"Q %-*.*s %4i ",NLEN,NLEN,namestr,lq[k]);
 	  for (h=hh; h<imin(hh+par.aliwidth,qa->pos-1); h++) 
@@ -277,8 +275,7 @@ void FullAlignment::PrintHHR(FILE* outf, Hit& hit)
       if (par.showcons && qa->ncons>=0)
 	{
 	  k=qa->ncons; 
-	  strncpy(namestr,qa->sname[k],NAMELEN-2);
-	  namestr[NAMELEN-1]='\0';
+	  strmcpy(namestr,qa->sname[k],NAMELEN);
 	  strcut(namestr);
 	  fprintf(outf,"Q %-*.*s %4i ",NLEN,NLEN,namestr,iq);
 	  for (h=hh; h<imin(hh+par.aliwidth,qa->pos-1); h++) 
@@ -300,8 +297,7 @@ void FullAlignment::PrintHHR(FILE* outf, Hit& hit)
       if (par.showcons && ta->ncons>=0)
 	{
 	  k=ta->ncons; 
-	  strncpy(namestr,ta->sname[k],NAMELEN-2);
-	  namestr[NAMELEN-1]='\0';
+	  strmcpy(namestr,ta->sname[k],NAMELEN);
 	  strcut(namestr);
 	  fprintf(outf,"T %-*.*s %4i ",NLEN,NLEN,namestr,jt);
 	  for (h=hh; h<imin(hh+par.aliwidth,ta->pos-1); h++) 
@@ -316,8 +312,7 @@ void FullAlignment::PrintHHR(FILE* outf, Hit& hit)
       for (k=0; k<ta->n; k++)
 	{
 	  if (k==ta->nss_dssp || k==ta->nsa_dssp || k==ta->nss_pred || k==ta->nss_conf || k==ta->ncons) continue;
-	  strncpy(namestr,ta->sname[k],NAMELEN-2);
-	  namestr[NAMELEN-1]='\0';
+	  strmcpy(namestr,ta->sname[k],NAMELEN);
 	  strcut(namestr);
 	  fprintf(outf,"T %-*.*s %4i ",NLEN,NLEN,namestr,lt[k]);
 	  for (h=hh; h<imin(hh+par.aliwidth,ta->pos-1); h++) 
@@ -333,8 +328,7 @@ void FullAlignment::PrintHHR(FILE* outf, Hit& hit)
 	  if (k==ta->nss_dssp && !par.showdssp) continue;
 	  if ((k==ta->nss_pred || k==ta->nss_conf)&& !par.showpred) continue;
 	  if (k==ta->nss_conf && !par.showconf) continue;
-	  strncpy(namestr,ta->sname[k],NAMELEN-2);
-	  namestr[NAMELEN-1]='\0';
+	  strmcpy(namestr,ta->sname[k],NAMELEN);
 	  strcut(namestr);
 	  fprintf(outf,"T %-*.*s      ",NLEN,NLEN,namestr);
 	  if (k==ta->nss_pred && ta->nss_conf>=0)

@@ -1,6 +1,0 @@
-bin
-test
-other
-src/hhformat.C
-src/hhcov.C
-src/hhtransitive_scoring_old.C

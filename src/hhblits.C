@@ -330,7 +330,7 @@ void help(char all=0)
   printf(" -noaddfilter   disable all filter steps (except for fast prefiltering)         \n");
   printf(" -nodbfilter    disable additional filtering of prefiltered HMMs                \n");
   printf(" -noblockfilter search complete matrix in Viterbi                               \n");
-  printf(" -maxfilt       max number of hits allowed to pass prefilter 2 (default=%i)  \n",par.maxnumdb);
+  printf(" -maxfilt       max number of hits allowed to pass 2nd prefilter (default=%i)  \n",par.maxnumdb);
   printf("\n");
   printf("Filter result alignment (options can be combined):                              \n");
   printf(" -id   [0,100]  maximum pairwise sequence identity (%%) (def=%i)                \n",par.max_seqid);
@@ -397,7 +397,8 @@ void help(char all=0)
   printf("                evolving query MSA becomes larger than neffmax (default=%.1f) \n",neffmax); 
   printf(" -scores <file> write scores for all pairwise comparisions to file               \n");
   printf(" -atab   <file> write all alignments in tabular layout to file                   \n");
-  printf(" -maxres <int>  max number of HMM columns, scales linearly with needed memory (def=%5i)\n",par.maxres);
+  printf(" -maxres <int>  max number of HMM columns (def=%5i)             \n",par.maxres);
+  printf(" -maxmem [1,inf[ max available memory in GB (def=%.1f)          \n",par.maxmem);
   } 
 #ifndef PTHREAD
   printf("(The -cpu option is inactive since HHblits was not compiled with POSIX thread support)\n");
@@ -642,7 +643,8 @@ void ProcessArguments(int argc, char** argv)
       else if (!strcmp(argv[i],"-shift") && (i<argc-1)) par.shift=atof(argv[++i]);
       else if ((!strcmp(argv[i],"-mact") || !strcmp(argv[i],"-mapt")) && (i<argc-1)) par.mact=atof(argv[++i]);
       else if (!strcmp(argv[i],"-scwin") && (i<argc-1)) {par.columnscore=5; par.half_window_size_local_aa_bg_freqs = imax(1,atoi(argv[++i]));}
-      else if (!strncmp(argv[i],"-cpu",4) && (i<argc-1)) { threads=atoi(argv[++i]); cpu = threads; }
+      else if (!strncmp(argv[i],"-cpu",4) && (i<argc-1)) { threads=atoi(argv[++i]); cpu = threads;}
+      else if (!strcmp(argv[i],"-maxmem") && (i<argc-1)) {par.maxmem=atof(argv[++i]);}
       else if (!strncmp(argv[i],"-premerge",9) && (i<argc-1)) par.premerge=atoi(argv[++i]);
       else if (!strcmp(argv[i],"-csb") && (i<argc-1)) par.csb=atof(argv[++i]);
       else if (!strcmp(argv[i],"-csw") && (i<argc-1)) par.csw=atof(argv[++i]);
@@ -729,12 +731,32 @@ void PerformViterbiByWorker(int bin)
   return;
 }
 
+//????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// Why is the framed code below needed?? Filetype will be checked in ReadInput()!
+// Suggestion: 
+// Rename this function as PrepareQa3mFile() and rename ReadInput() as ReadQueryFile(). 
+// Throw out the framed code below, including the ReadInput() call,
+// and replace the old call to ReadInputFile() in hhblits.C by { ReadQueryFile(); PrepareQa3mFile();} .
+// Comment Michael Remmert: 
+// "In hhblits.C gab es glaube ich 2 Gründe, warum ich den Filetype schon vorher checke:
+// Zum einen habe ich da abgefangen, ob der Input im HMMER-Format ist (input_format == 1 && par.hmmer_used = true) 
+// und das dann entsprechend ausgegeben.
+// Zum anderen habe ich, wenn der Input aus nur einer Sequenz besteht, den Parameter par.M auf 3 gesetzt, 
+// was hat den Vorteil, dass es bei einer einzelnen Sequenz, die nur aus Kleinbuchstaben besteht, 
+// HHblits einfach alle Buchstaben der Sequenz als Match-States annimmt:
+// if (num_seqs == 1 && par.M == 1) par.M=3; // if only single sequence in input file,  
+//                                            //use par.M=3 (match states by first seq)"
+
 /////////////////////////////////////////////////////////////////////////////////////
 // Read input file
 /////////////////////////////////////////////////////////////////////////////////////
 void ReadInputFile()
 {
   int num_seqs = 0;
+
+
+  //????????????????????????????????????????????????????????????????????????????????????????????????????????????
+  // Remove framed code?
 
   FILE* qf=fopen(par.infile,"rb");
   if (!qf) OpenFileError(par.infile);
@@ -776,11 +798,14 @@ void ReadInputFile()
     }
   fclose(qf);
 
+
   v1=v;
   if (v>0 && v<=3) v=1; else v-=2;
 
   // Read input file (HMM or alignment format) without adding pseudocounts
   ReadInput(par.infile, *q);
+
+  //????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
   // Read in query alignment
   FILE* qa3mf=fopen(qa3mfile,"r");
@@ -1230,18 +1255,19 @@ void perform_viterbi_search(int db_size)
 void perform_realign(char *dbfiles[], int ndb)
 {
   q->Log2LinTransitionProbs(1.0); // transform transition freqs to lin space if not already done
-      
+  int nhits=0;
+  int N_aligned=0;
+
+  // Longest allowable length of database HMM (backtrace: 5 chars, fwd: 1 double, bwd: 1 double 
+  long int Lmaxmem=((par.maxmem-0.5)*1024*1024*1024)/(2*sizeof(double)+8)/q->L/bins;
+  long int Lmax=0;      // length of longest HMM to be realigned
+    
   par.block_shading->Reset();
   while (!par.block_shading->End())
     delete[] (par.block_shading->ReadNext()); 
   par.block_shading->New(16381,NULL);
   par.block_shading_counter->New(16381,0);
-  const float MEMSPACE_DYNPROG = 2.0*1024.0*1024.0*1024.0;
-  int nhits=0;
-  int Lmax=0;      // length of longest HMM to be realigned
-  int Lmaxmem=(int)((float)MEMSPACE_DYNPROG/q->L/6.0/8.0/bins); // longest allowable length of database HMM
-  int N_aligned=0;
-  
+
   // phash_plist_realignhitpos->Show(dbfile) is pointer to list with template indices and their ftell positions.
   // This list can be sorted by ftellpos to access one template after the other efficiently during realignment
   Hash< List<Realign_hitpos>* >* phash_plist_realignhitpos;
@@ -1340,10 +1366,10 @@ void perform_realign(char *dbfiles[], int ndb)
       Lmax=Lmaxmem;
       if (v>=1) 
 	{
-	  cerr<<"WARNING: Realigning sequences only up to length "<<Lmaxmem<<" due to limited memory."<<endl;
-	  cerr<<"This is genarally unproboblematic but may lead to slightly sub-optimal alignments."<<endl;
-//	  cerr<<"You can allow HHblits to use more than "<<par.maxmem<<"GB of memory with option -mem <GB>"<<endl;  // still to be implemented
-	  if (bins>1) cerr<<"Note: you can reduce memory requirement by lowering N in the -cpu N option."<<endl;
+	  cerr<<"WARNING: Realigning sequences only up to length "<<Lmaxmem<<"."<<endl;
+	  cerr<<"This is genarally unproboblematic but may lead to slightly sub-optimal alignments for longer sequences."<<endl;
+ 	  cerr<<"You can increase available memory using the -maxmem <GB> option (currently "<<par.maxmem<<" GB)."<<endl; // still to be implemented
+	  cerr<<"The maximum length realignable is approximately (maxmem-0.5GB)/query_length/(cpus+1)/24B."<<endl;
 	}
     }
   
@@ -1945,11 +1971,20 @@ int main(int argc, char **argv)
   if (fin) {
     fclose(fin);
   } else {
-    dba3m[0] = 0;
+    if(errno == EOVERFLOW)
+    {
+      cerr << endl;
+      cerr <<"ERROR in "<< program_name <<": A3M database too big (>2GB on 32bit system?):";
+      cerr << endl;
+      cerr << dba3m;
+      cerr << endl;
+      exit(errno);
+    }
     if (num_rounds > 1)
       {help(); cerr<<endl<<"Error in "<<program_name<<": A3M database missing (needed for more than 1 search iteration)\n"; exit(4);}
     if (*par.alnfile || *par.psifile || *par.hhmfile || *alis_basename)
       {help(); cerr<<endl<<"Error in "<<program_name<<": A3M database missing (needed for output alignment)\n"; exit(4);}
+    dba3m[0] = 0;
   }
 
   q = new HMM;
@@ -2026,6 +2061,7 @@ int main(int argc, char **argv)
   if (par.pre_pca<0.001) par.pre_pca=0.001; // to avoid log(0)
   if (par.b>par.B) par.B=par.b;
   if (par.z>par.Z) par.Z=par.z;
+  if (par.maxmem<1.0) {cerr<<"Warning: setting -maxmem to its minimum allowed value of 1.0\n"; par.maxmem=1.0;}
 
   // Set (global variable) substitution matrix and derived matrices
   SetSubstitutionMatrix();
@@ -2179,8 +2215,8 @@ int main(int argc, char **argv)
 
     // Search datbases
     if (v>=2) {
-      printf("HMMs passed prefilter 2 (gapped profile-profile alignment)   : %6i\n", (ndb_new+ndb_old));
-      printf("HMMs passed prefilter 2 and not found in previous iterations : %6i\n", ndb_new);
+      printf("HMMs passed 2nd prefilter (gapped profile-profile alignment)   : %6i\n", (ndb_new+ndb_old));
+      printf("HMMs passed 2nd prefilter and not found in previous iterations : %6i\n", ndb_new);
       printf("Scoring %i HMMs using HMM-HMM Viterbi alignment\n", ndb_new);
     }
 

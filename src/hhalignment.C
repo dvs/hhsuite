@@ -178,9 +178,9 @@ Alignment& Alignment::operator=(Alignment& ali)
   kfirst = ali.kfirst;
 
   strcpy(longname,ali.longname);
-  strcpy(name,ali.name);
-  strcpy(fam,ali.fam);
-  strcpy(file,ali.file);
+  strmcpy(name,ali.name,NAMELEN);
+  strmcpy(fam,ali.fam,NAMELEN);
+  strmcpy(file,ali.file,NAMELEN);
 
   for (int i=1; i<=L; ++i) l[i]=ali.l[i];
 
@@ -224,7 +224,7 @@ void Alignment::Read(FILE* inf, char infile[], char* firstline)
           if (k>=MAXSEQ-1)
             {
               if (v>=1 && k>=MAXSEQ)
-                cerr<<endl<<"WARNING: maximum number "<<MAXSEQ<<" of sequences exceded in file "<<infile<<"\n";
+                cerr<<endl<<"WARNING: maximum number "<<MAXSEQ<<" of sequences exceeded in file "<<infile<<"\n";
               break;
             }
           cur_name=line+1;          //beginning of current sequence name
@@ -309,7 +309,7 @@ void Alignment::Read(FILE* inf, char infile[], char* firstline)
 //        strcpy(fam,ptr1);    // copy AC number to fam
 //        if (!strncmp(fam,"PF",2)) strcut_(fam,'.'); // if PFAM identifier contains '.' cut it off
 //        strcut_(ptr2);       // cut after first word ...
-          strcpy(name,ptr1);   // ... and copy first word into name
+          strmcpy(name,ptr1,NAMELEN);   // ... and copy first word into name
 	  readCommentLine = '1';
         }
 
@@ -394,7 +394,7 @@ void Alignment::Read(FILE* inf, char infile[], char* firstline)
             }
           if (v && l>=par.maxcol-1)
             {
-              cerr<<endl<<"WARNING: maximum number of residues "<<par.maxcol-2<<" exceded in sequence "<<sname[k]<<"\n";
+              cerr<<endl<<"WARNING: maximum number of residues "<<par.maxcol-2<<" exceeded in sequence "<<sname[k]<<"\n";
               skip_sequence=1;
             }
           cur_seq[l]='\0';  //Ensure that cur_seq ends with a '\0' character
@@ -508,8 +508,8 @@ void Alignment::GetSeqsFromHMM(HMM& q)
   N_in = k;
   
   strcpy(longname,q.longname);
-  strcpy(name,q.name);
-  strcpy(fam,q.fam);
+  strmcpy(name,q.name,NAMELEN);
+  strmcpy(fam,q.fam,NAMELEN);
   
   return;
 }
@@ -2565,7 +2565,7 @@ void Alignment::MergeMasterSlave(Hit& hit, char ta3mfile[], FILE* ta3mf, bool fi
 /////////////////////////////////////////////////////////////////////////////////////
 void Alignment::AddSequence(char Xk[], int Ik[])
 {
-  int i;    // position in query and target
+  int i;    // position in query and template
   if (L<=0) InternalError("L is not set in AddSequence()");
   X[N_in]=new(char[L+2]);
   for (i=0; i<=L+1; ++i) X[N_in][i]=Xk[i];

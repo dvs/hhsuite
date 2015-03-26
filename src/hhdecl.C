@@ -10,7 +10,7 @@
 //// Constants
 /////////////////////////////////////////////////////////////////////////////////////
 
-EXTERN const char VERSION_AND_DATE[]="version 2.0.12 (Feb 2012)";
+EXTERN const char VERSION_AND_DATE[]="version 2.0.13 (Feb 2012)";
 EXTERN const char REFERENCE[]="Soding, J. Protein homology detection by HMM-HMM comparison. Bioinformatics 2005, 21, 951-960.\n";
 EXTERN const char COPYRIGHT[]="(C) Johannes Soeding, Michael Remmert, Andreas Biegert, Andreas Hauser\n";
 EXTERN const int MAXSEQ=65535; //max number of sequences in input alignment (must be <~30000 on cluster nodes)
@@ -18,10 +18,10 @@ EXTERN const int LINELEN=524288; //max length of line read in from input files; 
 EXTERN const int MAXSEQDIS=10238;//max number of sequences stored in 'hit' objects and displayed in output alignment
 EXTERN const int IDLEN=255;     //max length of scop hierarchy id and pdb-id
 EXTERN const int DESCLEN=32765;//max length of sequence description (longname)
-EXTERN const int NAMELEN=PATH_MAX+1; //max length of file names etc., defined in ?.h 
+EXTERN const int NAMELEN=(PATH_MAX>512? PATH_MAX:512); //max length of file names etc., defined in limits.h 
 EXTERN const int MAXOPT=127;   //Maximum number of options to be read in from .hhconfig or command line
 EXTERN const int NAA=20;       //number of amino acids (0-19)
-EXTERN const int NTRANS=7;    //number of transitions recorded in HMM (M2M,M2I,M2D,I2M,I2I,D2M,D2D)
+EXTERN const int NTRANS=7;     //number of transitions recorded in HMM (M2M,M2I,M2D,I2M,I2I,D2M,D2D)
 EXTERN const int NCOLMIN=10;   //min number of cols in subalignment for calculating pos-specific weights w[k][i]
 EXTERN const int ANY=20;       //number representing an X (any amino acid) internally
 EXTERN const int GAP=21;       //number representing a gap internally
@@ -190,7 +190,8 @@ public:
   float shift;            // Score offset for match-match states
   float mact;             // Score threshold (negative offset) in MAC alignment
   int realign_max;        // Realign max ... hits
-
+  float maxmem;           // maximum available memory in GB (approximately)
+ 
   char calibrate;         // calibration of query HMM?  0:no, 1:yes (write lamda,mu into query profile)
   char calm;              // derive P-values from: 0:query calibration  1:template calibration  2:both  3:Neural Network prediction
   int opt;                // for optimization: compare only every opt'th negative; 0: mode off
@@ -305,7 +306,10 @@ void Parameters::SetDefaultPaths(char *program_path)
     if (testf) { fclose(testf); return;}
   }
 
-  cerr<<endl<<"Error in "<<argv[0]<<": could not find context_data.lib and cs219.lib.\nPlease set the HHLIB environment variable to the HH-suite directory (Linux bash: export HHLIB=<hh_dir>, csh/tcsh: setenv HHLIB=<hh_dir>).\nThe missing files should be in $HHLIB/data/.\n ";
+  cerr<<endl<<"Error in "<<argv[0]<<": could not find context_data.lib and cs219.lib in '" << hhlib << "'.\n"
+              "Please set the HHLIB environment variable to the HH-suite directory\n"
+              "(Linux bash: export HHLIB=<hh_dir>, csh/tcsh: setenv HHLIB=<hh_dir>).\n"
+              "The missing files should be in $HHLIB/data/.\n ";
   exit(2);
 }
 
@@ -321,7 +325,7 @@ void Parameters::SetDefaults()
   maxres=15002;            // max number of states in HMM; must be <= LINELEN
   maxnumdb=20000;          // max number of hits allowed past prefilter
   maxnumdb_no_prefilter=20000;// max number of hits without prefiltering
-  
+
   append=0;                // overwrite output file
   outformat=0;             // 0: hhr  1: FASTA  2:A2M   3:A3M
   p=20.0f;                 // minimum threshold for inclusion in hit list and alignment listing
@@ -331,7 +335,8 @@ void Parameters::SetDefaults()
   z=10;                    // min number of lines in hit list
   Z=500;                   // max number of lines in hit list
   e=1e-3f;                 // maximum E-value for inclusion in output alignment, output HMM, and PSI-BLAST checkpoint model
-  realign_max=1000;
+  realign_max=1000;        // Realign max ... hits
+  maxmem = 3.0;            // 3GB
   showcons=1;              // show consensus sequence
   showdssp=1;              // show predicted secondary structure ss_dssp
   showpred=1;              // show predicted secondary structure ss_pred
