@@ -756,27 +756,6 @@ void init_no_prefiltering()
   // Get DBsize and num_chars
   CountSeqsInFile(db, par.dbsize);  // Get DBsize but not number of chars
   
-  // The following code has been updated and moved to CountSeqsInFile(...) 
-  // char tmp_file[NAMELEN];
-  // strcpy(tmp_file, db);
-  // strcat(tmp_file, ".sizes");
-  // FILE* fin = fopen(tmp_file, "r");
-  // if (!fin)
-  //   {
-  //     FILE *stream;
-  //     // Get DB-size
-  //     string command = "cat " + (string)db + " |grep \">\" |wc -l";
-  //     stream = popen(command.c_str(), "r");
-  //     char* ptr=fgets(line, LINELEN, stream);
-  //     par.dbsize = strint(ptr);
-  //     pclose(stream);
-  //   } 
-  // else 
-  //   {
-  //     char* ptr=fgets(line, LINELEN, fin);
-  //     par.dbsize = strint(ptr);
-  //     fclose(fin);
-  //   }
   
   if (par.dbsize > par.maxnumdb_no_prefilter)
     {cerr<<endl<<"Error in "<<program_name<<": Without prefiltering, the max. number of database HHMs is "<<par.maxnumdb_no_prefilter<<" (actual: "<<par.dbsize<<")\n";
@@ -784,7 +763,7 @@ void init_no_prefiltering()
       exit(4);
     }
 
-  char word[NAMELEN];
+  char word[LINELEN];
   FILE* dbf = NULL;
   dbf = fopen(db,"rb");
   if (!dbf) OpenFileError(db);
@@ -793,7 +772,7 @@ void init_no_prefiltering()
     {
       if (line[0]=='>')
 	{
-	  strwrd(word,line+1);
+	  strwrd(word,line+1,NAMELEN);
 
 	  // Add hit to dbfiles
 	  char db_name[NAMELEN];
@@ -835,35 +814,6 @@ void init_prefilter()
   // Get Prefilter Pvalue (Evalue / Par.Dbsize)
   LDB = CountSeqsInFile(db, par.dbsize);  // Get DBsize but not number of chars
 
-  // The following code has been updated and moved to CountSeqsInFile(...) 
-  // char tmp_file[NAMELEN];
-  // strcpy(tmp_file, db);
-  // strcat(tmp_file, ".sizes");
-  // FILE* fin = fopen(tmp_file, "r");
-  // if (!fin)
-  //   {
-  //     FILE *stream;
-  //     // Get DB-size
-  //     string command = "cat " + (string)db + " |grep \"^>\" |wc -l";
-  //     stream = popen(command.c_str(), "r");
-  //     char* ptr=fgets(line, LINELEN, stream);
-  //     par.dbsize = strint(ptr);
-  //     pclose(stream);
-  //     // Get DB-length
-  //     command = "cat " + (string)db + " |grep -v \"^>\" |wc -c";
-  //     stream = popen(command.c_str(), "r");
-  //     ptr=fgets(line, LINELEN, stream);
-  //     LDB = strint(ptr);
-  //     pclose(stream);
-  //   } 
-  // else 
-  //   {
-  //     char* ptr=fgets(line, LINELEN, fin);
-  //     par.dbsize = strint(ptr);
-  //     LDB = strint(ptr);
-  //     fclose(fin);
-  //   }
-
   if (par.dbsize == 0 || LDB == 0)
     {cerr<<endl<<"Error! Could not determine DB-size of prefilter db ("<<db<<")\n"; exit(4);}
 	    
@@ -872,7 +822,7 @@ void init_prefilter()
   X = (unsigned char*)memalign(16,LDB*sizeof(unsigned char));                     // database string (concatenate all DB-seqs)
   first = (unsigned char**)memalign(16,(2*par.dbsize)*sizeof(unsigned char*));    // first characters of db sequences
   length = (int*)memalign(16,(2*par.dbsize)*sizeof(int));                         // lengths of db sequences
-  dbnames = new char*[par.dbsize*2];                                              // names of db sequences
+  dbnames = new char*[2*par.dbsize];                                              // names of db sequences
 
   /////////////////////////////////////////
   // Read in database
@@ -884,7 +834,6 @@ void init_prefilter()
   dbf = fopen(db,"rb");
   if (!dbf) OpenFileError(db);
 
-//  while(fgetline(line,LINELEN,dbf)) // read prefilter database
   while(fgets(line,LINELEN,dbf)) // read prefilter database
     {
       
@@ -894,7 +843,7 @@ void init_prefilter()
 	    length[num_dbs++] = imin(par.maxres,len);
 	  len = 0;
 	      
-	  strwrd(word,line+1);
+	  strwrd(word,line+1,NAMELEN);
 	  /////// TEMP - temporär, wird von alten DBs benötigt, alle DBs ab 2011 sollten auf neuem Stand sein
 	  strcut(word,"_cons");
 
@@ -906,10 +855,9 @@ void init_prefilter()
       else
 	{
 	  unsigned char* c = (unsigned char*)line;
-//	  while (*c!='\0')
  	  while (*c!='\n')
 	    {
-#ifdef DEBUG
+#ifdef HHDEBUG
 	      if (cs::AS219::kValidChar[*c])
 	      	{
 		  X[pos++]= (unsigned char)(cs::AS219::kCharToInt[*c]);
@@ -934,6 +882,9 @@ void init_prefilter()
   fclose(dbf);
 }
 
+////////////////////////////////////////////////////////////////////////
+// Prepare query profile for prefitering 
+////////////////////////////////////////////////////////////////////////
 void stripe_query_profile()
 {
   LQ=q_tmp->L;
@@ -1062,9 +1013,33 @@ void stripe_query_profile()
     free(query_profile[i]);
   delete[] query_profile;
 }
+////////////////////////////////////////////////////////////////////////
 
-void prefilter_with_SW_evalue_preprefilter_backtrace()
+
+
+////////////////////////////////////////////////////////////////////////
+// Main prefilter function
+////////////////////////////////////////////////////////////////////////
+void prefilter_db()
 {
+  doubled = new(Hash<char>);
+  doubled->New(16381,0);
+  for (int idb=0; idb<ndb_new; idb++) delete[](dbfiles_new[idb]);
+  for (int idb=0; idb<ndb_old; idb++) delete[](dbfiles_old[idb]);
+  ndb_new = ndb_old = 0;
+  block_count=0;
+  //block = new(int[400]);
+  block = NULL;
+  strcpy(actual_hit,"");
+
+  par.block_shading->Reset();
+  while (!par.block_shading->End())
+    delete[] (par.block_shading->ReadNext()); 
+  par.block_shading->New(16381,NULL);
+  par.block_shading_counter->New(16381,0);
+
+  // Prefilter with SW evalue preprefilter backtrace
+
   stripe_query_profile();
   
   int* prefiltered_hits = new int[par.dbsize+1];
@@ -1105,10 +1080,13 @@ void prefilter_with_SW_evalue_preprefilter_backtrace()
 #pragma omp critical
 	  prefiltered_hits[count_dbs++] = n;
 	}
+      
+      if (v>=2 && !(n%100000)) {cout<<"."; cout.flush();}
+
     }
   if (v>=2)
     {
-      printf("HMMs passed prefilter 1 (gapless profile-profile alignment)  : %6i\n", count_dbs);
+      printf("\nHMMs passed prefilter 1 (gapless profile-profile alignment)  : %6i\n", count_dbs);
       //printf("%6i hits through preprefilter!\n", count_dbs);
     }
   if (print_elapsed) ElapsedTimeSinceLastCall("(ungapped preprefilter)");
@@ -1256,29 +1234,6 @@ void prefilter_with_SW_evalue_preprefilter_backtrace()
   delete[] workspace;
   delete[] prefiltered_hits;
   delete[] backtrace_hits;
-}
-
-// Main prefilter function
-void prefilter_db()
-{
-  doubled = new(Hash<char>);
-  doubled->New(16381,0);
-  for (int idb=0; idb<ndb_new; idb++) delete[](dbfiles_new[idb]);
-  for (int idb=0; idb<ndb_old; idb++) delete[](dbfiles_old[idb]);
-  ndb_new = ndb_old = 0;
-  block_count=0;
-  //block = new(int[400]);
-  block = NULL;
-  strcpy(actual_hit,"");
-
-  par.block_shading->Reset();
-  while (!par.block_shading->End())
-    delete[] (par.block_shading->ReadNext()); 
-  par.block_shading->New(16381,NULL);
-  par.block_shading_counter->New(16381,0);
-
-  // Do prefiltering
-  prefilter_with_SW_evalue_preprefilter_backtrace();
-
   if(doubled) delete doubled;
 }
+////////////////////////////////////////////////////////////////////////

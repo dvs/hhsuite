@@ -18,27 +18,38 @@ ifdef ICC
   HHSEARCH_LIBS = -lpthread -lrt
   HHBLITS_LIBS = -lpthread -lrt -openmp
   OBJECT_LIBS = -openmp
-else
+else # ifndef ICC
   CXX = g++
   CXXFLAGS = -O3 -Wall -Wno-deprecated -Wno-char-subscripts -fno-strict-aliasing -I$(CS_DIR) $(BITS_FLAG) -I$(FFINDEX_DIR)
   HHSEARCH_LIBS = -lpthread
   HHBLITS_LIBS = -lpthread -fopenmp
   HHALIGN_LIBS = 
   OBJECT_LIBS = -fopenmp
-ifndef NO_SSE3
-  CXXFLAGS += -DHH_SSE3 -march=core2 
-else
-  CXXFLAGS += -DHH_SSE2
-endif
-ifeq ($(OS), Darwin)
+  ifdef WITH_NATIVE
+    CXXFLAGS += -march=native
+  endif
+  ifdef WITH_SSE41
+    CXXFLAGS += -DHH_SSE41 -msse4.1 -DHH_SSE3 -mssse3
+  else
+    ifndef NO_SSE2
+      ifdef NO_SSE3
+        CXXFLAGS += -DHH_SSE2 -msse2
+      else
+        CXXFLAGS += -DHH_SSE3 -msse3
+      endif
+    endif
+  endif
+  ifeq ($(OS), Darwin)
   CXXFLAGS+=-DHH_MAC
-endif
-ifeq ($(OS), Linux)
+  endif
+  ifeq ($(OS), Linux)
   HHSEARCH_LIBS = -lpthread -lrt
   HHBLITS_LIBS+=-lrt
-  HHALIGN_LIBS = -DNO_FREETYPE -DHH_PNG -lpng -lz -I/usr/include/ -L/usr/lib
-endif
-endif
+    ifndef NO_PNG
+      HHALIGN_LIBS = -DNO_FREETYPE -DHH_PNG -lpng -lz
+    endif
+  endif
+endif # ifndef ICC
 
 CPP = $(CXX) $(CXXFLAGS)
 CPP_VALGRIND = $(CXX) -g $(CXXFLAGS)
