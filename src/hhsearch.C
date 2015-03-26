@@ -26,6 +26,13 @@
 //     HHblits: Lightning-fast iterative protein sequence searching by HMM-HMM alignment.
 //     Nat. Methods 9:173-175 (2011); epub Dec 25, doi: 10.1038/NMETH.1818
 
+//
+// TODOs
+//
+// * Allow using the base name (without extension) in hhsearch to make it compatible with the ussage of hhblits
+//
+
+
 
 ////#define WINDOWS
 #define PTHREAD
@@ -44,6 +51,7 @@
 #include <errno.h>    // perror()
 #include <cassert>
 #include <stdexcept>
+#include <unistd.h>   // access()
 
 #ifdef PTHREAD
 #include <pthread.h>  // POSIX pthread functions and data structures
@@ -666,6 +674,9 @@ void perform_realign(char *dbfiles[], int ndb)
       strcpy(Qali.fam,q->fam);
       RemovePathAndExtension(Qali.file,par.hhmfile);
       
+      // If par.append==1 do not print query alignment
+      if (par.append) Qali.MarkSeqsAsNonPrintable();
+      
       if (v>=2) printf("Merging best hits to query alignment %s ...\n",qa3mfile);
       
       bin=0;
@@ -1104,7 +1115,7 @@ int main(int argc, char **argv)
 {
   char* argv_conf[MAXOPT];       // Input arguments from .hhdefaults file (first=1: argv_conf[0] is not used)
   int argc_conf=0;               // Number of arguments in argv_conf
-  char inext[IDLEN]="";          // Extension of input file (hhm or a3m)
+  char inext[IDLEN]="";          // Extension of input file ich 5 Leute, die an Transkription arbeiten. (hhm or a3m)
   const char print_elapsed=0;
 
 #ifdef PTHREAD
@@ -1142,8 +1153,8 @@ int main(int argc, char **argv)
   ProcessArguments(argc,argv);
 
   // Check command line input and default values
-  if (!*par.infile) // string empty?
-    {help(); cerr<<endl<<"Error in "<<program_name<<": no query alignment file given (-i file)\n"; exit(4);}
+  if (!*par.infile || !strcmp(par.infile,"")) // infile not given
+    {help(); cerr<<endl<<"Error in "<<program_name<<": input file missing!\n"; exit(4);}
   if (!par.dbfiles) // pointer never set?
     {help(); cerr<<endl<<"Error in "<<program_name<<": no HMM database file given (-d file)\n"; exit(4);}
   if (threads<=1) threads=0;
@@ -1654,6 +1665,10 @@ int main(int argc, char **argv)
       if (!qa3mf) OpenFileError(qa3mfile);
       Qali.Read(qa3mf,qa3mfile);
       fclose(qa3mf);
+
+      // If par.append==1 do not print query alignment
+      if (par.append) Qali.MarkSeqsAsNonPrintable();
+
       if (v>=2) printf("Merging hits to query alignment %s ...\n",qa3mfile);
       // If query consists of only one sequence:
       //     realign templates to query HMM enforced by sequences from up to the 10 best templates

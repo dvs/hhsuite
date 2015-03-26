@@ -72,7 +72,7 @@
 #include <float.h>    // FLT_MIN
 #include <ctype.h>    // islower, isdigit etc
 #include <time.h>     // clock_gettime etc. (in realtime library (-lrt compiler option))
-#include <errno.h>    // perror()
+#include <errno.h>    // perror(), strerror(errno)
 #include <cassert>
 #include <stdexcept>
 
@@ -302,17 +302,16 @@ void help(char all=0)
   printf(" -o <file>      write results in standard format to file (default=<infile.hhr>)\n");
   printf(" -oa3m <file>   write result MSA with significant matches in a3m format\n");
   if (!all) {
-  printf("                Analogous for output in a2m, psi, and hhm format (e.g. -ohhm)\n");
+  printf("                Analogous for -opsi and -ohhm\n");
   }
   if (all) {
   printf(" -opsi <file>   write result MSA of significant matches in PSI-BLAST format\n");
-  printf(" -oa2m <file>   write result MSA of significant matches in a2m format\n");
   printf(" -ohhm <file>   write HHM file for result MSA of significant matches\n");
   }
   printf(" -oalis <name>  write MSAs in A3M format after each iteration\n");
   if (all) {
   printf(" -Ofas <file>   write pairwise alignments of significant matches in FASTA format\n");
-  printf("                Analogous for output in a3m, a2m, and psi format (e.g. -Oa3m)\n");
+  printf("                Analogous for output in a3m and a2m format (e.g. -Oa3m)\n");
   printf(" -qhhm <file>   write query input HHM file of last iteration (default=off)      \n");
   printf(" -seq <int>     max. number of query/template sequences displayed (default=%i)  \n",par.nseqdis);
   printf(" -aliw <int>    number of columns per line in alignment list (default=%i)       \n",par.aliwidth);
@@ -1909,7 +1908,7 @@ int main(int argc, char **argv)
   ProcessArguments(argc,argv);
 
   // Check needed files
-  if (!*par.infile || !strcmp(par.infile,"") || !strcmp(par.infile,"stdin")) // infile not given
+  if (!*par.infile || !strcmp(par.infile,"")) // infile not given
     {help(); cerr<<endl<<"Error in "<<program_name<<": input file missing!\n"; exit(4);}
   if (!*db_base)
     {help(); cerr<<endl<<"Error in "<<program_name<<": database missing (see -d)\n"; exit(4);}
@@ -1930,7 +1929,7 @@ int main(int argc, char **argv)
       num_rounds=8; 
     }
   // Premerging can be very time-consuming on large database a3ms, such as from pdb70. 
-  // Hence it is only done when iteratively searches against uniprot20 or nr20 with their much smaller MSAs:
+  // Hence it is only done when iteratively searching against uniprot20 or nr20 with their much smaller MSAs:
   if (! (num_rounds > 1 || *par.alnfile || *par.psifile || *par.hhmfile || *alis_basename) ) par.premerge=0; 
   
   // No outfile given? Name it basename.hhm
@@ -1952,22 +1951,20 @@ int main(int argc, char **argv)
   strcat(dba3m,"_a3m_db");
 
   fin = fopen(dba3m, "r");
-  if (fin) {
+  if (fin) { // opening file successful?
     fclose(fin);
-  } else {
+  } else {   // unsuccessful
     if(errno == EOVERFLOW)
     {
       cerr << endl;
-      cerr <<"ERROR in "<< program_name <<": A3M database too big (>2GB on 32bit system?):";
-      cerr << endl;
-      cerr << dba3m;
-      cerr << endl;
+      cerr <<"Error in "<< program_name <<": A3M database  "<<dba3m<<" too big (>2GB on 32bit system?):"<< endl;
       exit(errno);
     }
-    if (num_rounds > 1)
-      {help(); cerr<<endl<<"Error in "<<program_name<<": A3M database missing (needed for more than 1 search iteration)\n"; exit(4);}
-    if (*par.alnfile || *par.psifile || *par.hhmfile || *alis_basename)
-      {help(); cerr<<endl<<"Error in "<<program_name<<": A3M database missing (needed for result alignment)\n"; exit(4);}
+    if (num_rounds > 1 ||*par.alnfile || *par.psifile || *par.hhmfile || *alis_basename)
+      {
+	cerr<<endl<<"Error in "<<program_name<<": Could not open A3M database "<<dba3m<<", "<<strerror(errno)<<" (needed to construct result MSA)"<<endl; 
+	exit(4);
+      }
     dba3m[0] = 0;
   }
 
@@ -2228,7 +2225,9 @@ int main(int argc, char **argv)
 
 	if (ndb_old > 0 && realign_old_hits)
 	  {
+            if(v > 0) {
 	    printf("Rescoring previously found HMMs with Viterbi algorithm\n");
+            }
 	    ViterbiSearch(dbfiles_old,ndb_old,(ndb_new + ndb_old));
 	    // Add dbfiles_old to dbfiles_new for realign
 	    for (int a = 0; a < ndb_old; a++) 
@@ -2240,7 +2239,9 @@ int main(int argc, char **argv)
 	  }
 	else if (!realign_old_hits && previous_hits->Size() > 0)
 	  {
-	    printf("Rescoring previously found HMMs with Viterbi algorithm\n");
+            if(v > 0) {
+	      printf("Rescoring previously found HMMs with Viterbi algorithm\n");
+            }
 	    RescoreWithViterbiKeepAlignment(ndb_new+previous_hits->Size());
 
 	    if (print_elapsed) ElapsedTimeSinceLastCall("(Rescoring with Viterbi)");
@@ -2280,15 +2281,13 @@ int main(int argc, char **argv)
 		// Add number of sequences in this cluster to total found
 		seqs_found += SequencesInCluster(hit_cur.name); // read number after second '|'
 		cluster_found++;		
-		printf("1 clusters_found=%4i  seqs_found=%4i  name=%s\n",cluster_found,seqs_found,hit_cur.name);
 
 		// Skip merging this hit if hit alignment was already merged during premerging
 		if (premerged_hits->Contains((char*)ss_tmp.str().c_str())) continue;
 
-		// Read a3m alignment of hit from <file>.a3m file and merge into Qali alignment
+		// Read a3m alignment of hit from <file>.a3m file
 		RemoveExtension(ta3mfile,hit_cur.dbfile);
 		strcat(ta3mfile,".a3m");
-
 
 		// Reading in next db MSA and merging it onto Qali
 		FILE* ta3mf;
@@ -2324,7 +2323,7 @@ int main(int argc, char **argv)
 	    // Convert ASCII to int (0-20),throw out all insert states, record their number in I[k][i]
 	    Qali.Compress("merged A3M file");
 
-	    // Sort out the nseqdis most dissimilar sequences for display in the result alignments
+	    // Sort out the nseqdis most dissimilacd r sequences for display in the result alignments
 	    Qali.FilterForDisplay(par.max_seqid,par.coverage,par.qid,par.qsc,par.nseqdis);
 	    
 	    // Remove sequences with seq. identity larger than seqid percent (remove the shorter of two)

@@ -306,6 +306,8 @@ void Alignment::Read(FILE* inf, char infile[], char* firstline)
           else if (par.mark==0)                 {display[k]=keep[k]=1; n_display++;}
           //store sequences up to nseqdis
           else if (line[1]=='@'&& n_display-N_ss<par.nseqdis) {display[k]=keep[k]=2; n_display++;}
+          else if (par.mark==1)                 {display[k]=keep[k]=1; n_display++;}
+          //store sequences up to nseqdis
           else                                  {display[k]=0; keep[k]=1;}
 
           // store sequence name
@@ -2365,14 +2367,25 @@ void Alignment::WriteWithoutInsertsToFile(const char* alnfile)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
-// Write stored,filtered sequences WITH insert states (lower case) to alignment file?
+// Write stored, filtered sequences WITH insert states (lower case) to alignment file?
 /////////////////////////////////////////////////////////////////////////////////////
 void Alignment::WriteToFile(const char* alnfile, const char format[])
 {
-  FILE* alnf;
+  FILE* alnf=NULL;
   char* tmp_name = new(char[NAMELEN]);
-  if (!par.append) alnf = fopen(alnfile,"w"); else alnf = fopen(alnfile,"a");
-  if (!alnf) OpenFileError(alnfile);
+
+  if(strcmp(alnfile, "stdout") != 0) {
+    if (!par.append)
+      alnf = fopen(alnfile, "w");
+    else
+      alnf = fopen(alnfile, "a");
+    }
+  else {
+    alnf = stdout;
+  }
+
+  if (!alnf)
+    OpenFileError(alnfile);
 
   if (!format || !strcmp(format,"a3m"))
     {
@@ -2406,7 +2419,7 @@ void Alignment::WriteToFile(const char* alnfile, const char format[])
     }
   
   delete[] tmp_name;
-  fclose(alnf);
+  if (strcmp(alnfile, "stdout")) fclose(alnf);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -2424,9 +2437,6 @@ void Alignment::MergeMasterSlave(Hit& hit, Alignment& Tali, char* ta3mfile)
   char c;             //
 
   if (v>=3) printf("Merging %s to query alignment\n",ta3mfile);
-
-  // If par.append==1 do not print query alignment
-  if (par.append) for (k=0; k<N_in; ++k) keep[k]=display[k]=0;
 
   // Record imatch[j]
   int* imatch=new(int[hit.j2+1]);
@@ -2449,7 +2459,7 @@ void Alignment::MergeMasterSlave(Hit& hit, Alignment& Tali, char* ta3mfile)
       if (!Tali.keep[k]) continue;
       if (N_in>=MAXSEQ)
         {
-          fprintf(stderr,"WARNING in %s: maximum number of %i sequences exceeded while reading %s. Skipping all following sequences\n",program_name,MAXSEQ,ta3mfile);
+          fprintf(stderr,"WARNING in %s: maximum number of %i sequences exceeded while reading %s. Skipping all following sequences of this MSA\n",program_name,MAXSEQ,ta3mfile);
           break;
         }
       cur_seq[0]=' ';     // 0'th position not used
@@ -2802,3 +2812,8 @@ void Alignment::GetPositionSpecificWeights(float* w[])
   return;
 }
 
+// Set keep[] and display[] arrays to 0 to mark seqs as non-printable
+void Alignment::MarkSeqsAsNonPrintable()
+{
+  for (int k=0; k<N_in; ++k) keep[k]=display[k]=0;
+}

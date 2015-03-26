@@ -15,11 +15,15 @@
  * files.
  */
 
+#ifndef _FFINDEX_H
+
+#define _FFINDEX_H 1
+
 #include <stdio.h>
 
-#define FFINDEX_VERSION 0.961
+#define FFINDEX_VERSION 0.980
 #define FFINDEX_MAX_INDEX_ENTRIES_DEFAULT 40000000
-#define FFINDEX_MAX_ENTRY_NAME_LENTH 56
+#define FFINDEX_MAX_ENTRY_NAME_LENTH 32
 
 enum ffindex_type { PLAIN_FILE, SORTED_FILE, SORTED_ARRAY, TREE };
 
@@ -65,6 +69,8 @@ char* ffindex_get_data_by_index(char *data, ffindex_index_t *index, size_t entry
 
 ffindex_entry_t* ffindex_get_entry_by_index(ffindex_index_t *index, size_t entry_index);
 
+ffindex_entry_t* ffindex_get_entry_by_name(ffindex_index_t *index, char *name);
+
 ffindex_index_t* ffindex_index_parse(FILE *index_file, size_t num_max_entries);
 
 ffindex_entry_t* ffindex_bsearch_get_entry(ffindex_index_t *index, char *name);
@@ -86,3 +92,5 @@ int ffindex_tree_write(ffindex_index_t* index, FILE* index_file);
 int ffindex_insert_filestream(FILE *data_file, FILE *index_file, size_t *offset, FILE* file, char *name);
 
 char* ffindex_copyright();
+
+#endif

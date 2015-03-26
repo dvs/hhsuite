@@ -5,7 +5,7 @@
 # Usage:   multithread.pl <fileglob> '<command>' [-cpu <int>] 
 #
 #
-#     HHsuite version 2.0.15 (June 2012)
+#     HHsuite version 2.0.16 (January 2013)
 #
 #     Reference: 
 #     Remmert M., Biegert A., Hauser A., and Soding J.
@@ -54,7 +54,7 @@ Usage: multithread.pl '<fileglob>' '<command>' [-cpu <int>] [-v {0,1,2}]
 
 <command> can include symbol 
    \$file for the full filename, e.g. /tmp/hh/1c1g_A.a3m, 
-   \$name the filename without extension, e.g. /tmp/hh/1c1g_A, and 
+   \$name for the filename without extension, e.g. /tmp/hh/1c1g_A, and 
    \$base for the filename without extension and path, e.g. 1c1g_A.
 
  -cpu <int>  number of threads to launch (default = $cpu)
