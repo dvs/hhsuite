@@ -10,10 +10,10 @@
 //// Constants
 /////////////////////////////////////////////////////////////////////////////////////
 
-EXTERN const char VERSION_AND_DATE[]="version 2.0.15 (April 2012)";
+EXTERN const char VERSION_AND_DATE[]="version 2.0.15 (June 2012)";
 EXTERN const char REFERENCE[]="Remmert M, Biegert A, Hauser A, and Soding J.\nHHblits: Lightning-fast iterative protein sequence searching by HMM-HMM alignment.\nNat. Methods 9:173-175 (2011).\n";
 EXTERN const char COPYRIGHT[]="(C) Johannes Soeding, Michael Remmert, Andreas Biegert, Andreas Hauser\n";
-EXTERN const int MAXSEQ=65535; //max number of sequences in input alignment (must be <~30000 on cluster nodes)
+EXTERN const int MAXSEQ=65535; //max number of sequences in input alignment (must be <~30000 on cluster nodes??)
 EXTERN const int LINELEN=524288; //max length of line read in from input files; must be >= MAXCOL
 EXTERN const int MAXSEQDIS=10238;//max number of sequences stored in 'hit' objects and displayed in output alignment
 EXTERN const int IDLEN=255;     //max length of scop hierarchy id and pdb-id
@@ -84,6 +84,16 @@ EXTERN float S33[NSSPRED][MAXCF][NSSPRED][MAXCF];  // P[B][cf][B'][cf'] =  log2 
 // float S77[NDSSP][DSSP];                  // P[A][B]           =  log2 P(A,B)/P(A)/P(B)
 
 
+// Structure to store data for HHblits early stopping filter
+EXTERN struct Early_Stopping {
+  int length;       // Length of array of 1/evalues
+  int counter;      // counter for evalue array
+  double* evals;    // array of last 1/evalues
+  double thresh;    // Threshold for early stopping
+  double sum;       // sum of evalues in array
+} *early_stopping=NULL;
+
+
 // cs object declarations
 cs::LibraryPseudocounts<cs::AA> *lib_pc;
 cs::ContextLibrary<cs::AA> *context_lib;
@@ -119,8 +129,8 @@ public:
   int aliwidth;           // number of characters per line in output alignments for HMM search
   char append;            // append to output file? (hhmake)
   float p;                // minimum probability for inclusion in hit list and alignments
-  float E;                // maximum E-value for inclusion in hit list and alignment list
-  float e;                // maximum E-value for inclusion in output alignment, output HMM, and PSI-BLAST checkpoint model
+  double E;               // maximum E-value for inclusion in hit list and alignment list
+  double e;               // maximum E-value for inclusion in output alignment, output HMM, and PSI-BLAST checkpoint model
   int Z;                  // max number of lines in hit list
   int z;                  // min number of lines in hit list
   int B;                  // max number of lines in alignment list
@@ -140,7 +150,7 @@ public:
   float qsc;              // Minimum score per column with query sequence (sequence 0)
   int coverage;           // Minimum coverage threshold
   int Ndiff;              // Pick Ndiff most different sequences that passed the other filter thresholds
-  bool nodiff;            // if true, do not filter in output alignment
+  bool allseqs;           // if true, do not filter in output alignment; show all sequences
 
   int Mgaps;              // Maximum percentage of gaps for match states
   int M;                  // Match state assignment by  1:upper/lower case  2:percentage rule  3:marked sequence
@@ -230,7 +240,8 @@ public:
   float alphab;
   float alphac;
 
-  // For filtering database alignments in HHsearch and HHblits
+  // For filtering database alignments in HHsearch and HHblits 
+  // JS: What are these used for? They are set to the options without _db anyway.
   int max_seqid_db;
   int qid_db;      
   float qsc_db;    
@@ -243,12 +254,6 @@ public:
   // HHblits prefilter
   bool prefilter;             // perform prefiltering in HHblits?
   bool early_stopping_filter; // Break HMM search, when the sum of the last N HMM-hit-Evalues is below threshold
-
-  double filter_thresh;    // Threshold for early stopping
-  int filter_length;       // Length of array of 1/evalues
-  double *filter_evals;    // array of last 1/evalues
-  double filter_sum;       // sum of evalues in array
-  int filter_counter;      // counter for evalue array
 
   Hash<int*>* block_shading;         // Cross out cells not covered by prefiltering hit in HHblits
   Hash<int>* block_shading_counter;  // Cross out cells not covered by prefiltering hit in HHblits
@@ -365,7 +370,7 @@ void Parameters::SetDefaults()
   qsc=-20.0f;              // default for minimum score per column with query
   coverage=0;              // default for minimum coverage threshold
   Ndiff=100;               // pick Ndiff most different sequences from alignment
-  nodiff = false;          // if true, do not filter in output alignment
+  allseqs = false;         // if true, do not filter result MSA; show all sequences
 
   Neff=0;                  // Filter alignment to a diversity (Neff) with a maximum Neff of par.Neff
 
@@ -443,12 +448,6 @@ void Parameters::SetDefaults()
   prefilter = false;              //true in hhblits
   early_stopping_filter = false;  //true in hhblits
 
-  filter_thresh=0;                // 0.01 in hhblits
-  filter_length=200;
-  filter_evals=NULL;
-  filter_sum=0.0;
-  filter_counter=0;
-
   block_shading=NULL;
   block_shading_counter=NULL;
   block_shading_space = 200;
@@ -462,7 +461,8 @@ void Parameters::SetDefaults()
   prefilter_evalue_thresh = 1000;
   preprefilter_smax_thresh = 10;
 
-  // for filtering database alignments in HHsearch and HHblits
+  // For filtering database alignments in HHsearch and HHblits 
+  //JS: What are these used for? They are set to the options without _db anyway.
   max_seqid_db=max_seqid;
   qid_db=qid;            
   qsc_db=qsc;            

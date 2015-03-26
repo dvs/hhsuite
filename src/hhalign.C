@@ -108,8 +108,8 @@ using std::ofstream;
 /////////////////////////////////////////////////////////////////////////////////////
 // Global variables 
 /////////////////////////////////////////////////////////////////////////////////////
-HMM* q = new HMM;            //Create a HMM with maximum of par.maxres match states
-HMM* t;                      // Create template HMM with maximum of MAXRES match states 
+HMM* q = new HMM;            // Create query    HMM with maximum of par.maxres match states
+HMM* t = new HMM;            // Create template HMM with maximum of par.maxres match states
 Alignment qali;              // (query alignment might be needed outside of hhfunc.C for -a option)
 Hit hit;                     // Ceate new hit object pointed at by hit
 HitList hitlist;             // list of hits with one Hit object for each pairwise comparison done
@@ -824,7 +824,7 @@ int main(int argc, char **argv)
   // Read input file (HMM, HHM, or alignment format), and add pseudocounts etc.
   char input_format=0;
   ReadQueryFile(par.infile,input_format,q,&qali); 
-  PrepareQueryHMM(par.infile,input_format,q,&qali);
+  PrepareQueryHMM(input_format,q);
 
   // Set query columns in His-tags etc to Null model distribution
   if (par.notags) q->NeutralizeTags();
@@ -838,7 +838,7 @@ int main(int argc, char **argv)
       }
 
       // Deep-copy q into t
-      t = q;
+      *t = *q;
       
       // Find overlapping alternative alignments
       hit.self=1;
@@ -1144,10 +1144,13 @@ int main(int argc, char **argv)
       fclose(qa3mf);
       
       // Align query with template in master-slave mode 
+      Alignment Tali;
       FILE* ta3mf=fopen(par.tfile,"r");
       if (!ta3mf) OpenFileError(par.tfile);
-      Qali.MergeMasterSlave(hit,par.tfile, ta3mf);
+      Tali.Read(ta3mf,par.tfile); // Read template alignment into Tali
       fclose(ta3mf);
+      Tali.Compress(par.tfile); // Filter database alignment
+      Qali.MergeMasterSlave(hit,Tali,par.tfile);
       
       // Write output A3M alignment?
       if (*par.alnfile) Qali.WriteToFile(par.alnfile,"a3m");
@@ -1417,6 +1420,7 @@ int main(int argc, char **argv)
     hitlist.ReadNext().Delete(); // Delete content of hit object
 
   delete q;
+  delete t;
 
   if (strucfile && par.wstruc>0) 
     {
