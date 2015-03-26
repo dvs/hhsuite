@@ -39,6 +39,12 @@ Compilation produces by default static binaries. If you encounter
 missing library errors, also make sure you have the static versions
 installed, e.g. glibc-static.
 
+A dynamically linked version of the programs can be compiled with:
+
+$ make all
+
+On Mac OS X only dynamic linking is supported.
+
 
 3. Installation
 
@@ -66,6 +72,21 @@ perl scripts also read HHLIB to locate
 4.2. Specify paths to BLAST, PSIPRED, PDB, DSSP etc. in 
 $INSTALL_DIR/lib/hh/scripts/HHPaths.pm
 where they are read by the perl scripst in hh-suite.
+
+4.3 For dynamic builds only
+
+To use a dynamic build, in the lib subdirectory must either be in the system
+library path, e.g. the ones configured in /etc/ld.so.conf on linux, or a variable
+must be set for the run-time linker to find the libraries.
+
+Assuming INSTALL_DIR was set to /opt/hhsuite, on linux LD_LIBRARY_PATH must
+be set, e.g. in bourne shell format (bash, zsh etc):
+
+$ export LD_LIBRARY_PATH=/opt/hhsuite/lib
+
+on Mac OSX DYLD_LIBRARY_PATH must be set, e.g.:
+
+$ export DYLD_LIBRARY_PATH=/opt/hhsuite/lib
 
 
 5. Download Databases

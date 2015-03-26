@@ -247,7 +247,7 @@ void help()
   printf("(The -cpu option is inactive since POSIX threads ae not supported on your platform)\n");
 #endif
   printf("\n");
-  printf("An extended list of options can be obtained by using '--help all' as parameter \n");
+  printf("An extended list of options can be obtained by using '-help all' as parameter \n");
   printf("\n");
   printf("Example: %s -i a.1.1.1.a3m -d scop70_1.71.hhm \n",program_name);
   cout<<endl;
@@ -496,7 +496,7 @@ void ProcessArguments(int argc, char** argv)
 	    {help(); cerr<<endl<<"Error in "<<program_name<<": no query file following -atab\n"; exit(4);}
 	  else strncpy(par.alitabfile,argv[i],NAMELEN);
 	}
-      else if (!strcmp(argv[i],"-h")|| !strcmp(argv[i],"--help"))
+      else if (!strcmp(argv[i],"-h")|| !strcmp(argv[i],"-help"))
         {
           if (++i>=argc || argv[i][0]=='-') {help(); exit(0);}
           if (!strcmp(argv[i],"out")) {help_out(); exit(0);}
@@ -1330,15 +1330,15 @@ int main(int argc, char **argv)
 
 
   // Cut par.dbfiles into separate database strings and read pal files
-  const int MAXNUMDB=16383;
+
   int ndb=0;
   Hash<char>* doubled;
   doubled = new(Hash<char>);
   doubled->New(16381,0);
-  char* dbfiles[MAXNUMDB+1];
+  char** dbfiles = new char*[par.maxnumdb+1];
   char* dbfile_cur=strscn_(par.dbfiles); // current file name
   char* dbfile_next; // next file name after current
-  while (*dbfile_cur && ndb<MAXNUMDB)
+  while (*dbfile_cur && ndb<par.maxnumdb)
     {
       // Cut off everything after next white space and store beginning of next database name in dbfile_next
       dbfile_next=strcut_(dbfile_cur);
@@ -1357,7 +1357,7 @@ int main(int argc, char **argv)
                   palf = fopen(dbfile_cur,"rb");
                   if (!palf) OpenFileError(dbfile_cur);
                 }
-              while(fgetline(dbfile,NAMELEN,palf) && ndb<MAXNUMDB) // read HMM files in pal file
+              while(fgetline(dbfile,NAMELEN,palf) && ndb<par.maxnumdb) // read HMM files in pal file
                 {
                   if (! doubled->Contains(dbfile))
                     {
@@ -1388,10 +1388,10 @@ int main(int argc, char **argv)
      dbfile_cur=dbfile_next;
     }
 
-  //fprintf (stderr,"ndb: %i  MAXNUMDB: %i\n",ndb,MAXNUMDB);
+  //fprintf (stderr,"ndb: %i  par.maxnumdb: %i\n",ndb,par.maxnumdb);
 
-  if (v>=1 && ndb>=MAXNUMDB && *dbfiles[ndb-1])
-    fprintf (stderr,"WARNING: maximum of %i allowed databases surpassed. Skipping the rest.\n",MAXNUMDB);
+  if (v>=1 && ndb>=par.maxnumdb && *dbfiles[ndb-1])
+    fprintf (stderr,"WARNING: maximum of %i allowed databases surpassed. Skipping the rest.\n",par.maxnumdb);
 
 
 
@@ -1827,7 +1827,10 @@ int main(int argc, char **argv)
       delete t[bin];
      }
   if (par.dbfiles) delete[] par.dbfiles;
-  for (int idb=0; idb<ndb; idb++) delete[](dbfiles[idb]);
+  if (dbfiles) {
+    for (int idb=0; idb<ndb; idb++) delete[](dbfiles[idb]);
+    delete[] dbfiles;
+  }
   if (format) delete[](format);
  if (par.exclstr) delete[] par.exclstr;
   for (int n = 1; n < argc_conf; n++)

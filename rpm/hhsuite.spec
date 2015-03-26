@@ -1,10 +1,10 @@
 Summary: Protein sequenging analysing tools using HMM-HMM comparison
 Name: hhsuite
-Version: 2.0.0
+Version: 2.0.1
 Release: 1
 License: GPL
 Group: Utilities/System
-Source: ftp://toolkit.genzentrum.lmu.de/HH-suite/hhsuite-2.0.0.tar.gz
+Source: ftp://toolkit.genzentrum.lmu.de/HH-suite/hhsuite-2.0.1.tar.gz
 Requires: libpng, perl
 BuildRequires: libpng-devel
 BuildRoot: /tmp/hhsuite-build
@@ -45,11 +45,9 @@ make install INSTALL_DIR="$RPM_BUILD_ROOT/usr"
 /usr/lib/hh/scripts
 /usr/lib/hh/scripts/create_profile_from_hmmer.pl
 /usr/lib/hh/scripts/hhmakemodel.pl
-/usr/lib/hh/scripts/create_db.pl
 /usr/lib/hh/scripts/Align.pm
 /usr/lib/hh/scripts/create_profile_from_hhm.pl
 /usr/lib/hh/scripts/HHPaths.pm
-/usr/lib/hh/scripts/create_cs_db.pl
 /usr/lib/hh/scripts/reformat.pl
 /usr/lib/hh/scripts/addss.pl
 /usr/lib/hh/data/do_not_delete

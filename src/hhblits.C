@@ -25,10 +25,13 @@
 //     HHblits: Lightning-fast iterative protein sequence searching by HMM-HMM alignment.
 //     Nat. Methods, epub Dec 25, doi: 10.1038/NMETH.1818 (2011).
 
-////#define WINDOWS
 #define PTHREAD
 #define MAIN
 #define HHBLITS
+// #define DEBUG
+// #define DEBUG_THREADS
+// #define WINDOWS
+
 #include <iostream>   // cin, cout, cerr
 #include <fstream>    // ofstream, ifstream
 #include <cstdio>     // printf
@@ -120,8 +123,6 @@ char tmp_file[]="/tmp/hhblitsXXXXXX";  // for runtime secondary structure predic
 // HHblits variables
 const char HHBLITS_REFERENCE[] = "Remmert M., Biegert A., Hauser A., and Soding J.\nHHblits: Lightning-fast iterative protein sequence searching by HMM-HMM alignment.\nNat. Methods, epub Dec 25, doi: 10.1038/NMETH.1818 (2011).\n";
 
-const int MAXNUMDB=20000;               // maximal number of hits through prefiltering
-const int MAXNUMDB_NO_PREFILTER=200000; // maximal number of hits without prefiltering
 int num_rounds   = 2;                   // number of iterations
 bool last_round = false;                // set to true in last iteration
 bool already_seen_filter = true;        // Perform filtering of already seen HHMs
@@ -161,10 +162,10 @@ char db[NAMELEN];                        // database with context-state sequence
 char dba3m[NAMELEN];                     // database with A3M-files
 char dbhhm[NAMELEN];                     // database with HHM-files
 
+char** dbfiles_new;
+char** dbfiles_old;
 int ndb_new=0;
-char* dbfiles_new[MAXNUMDB_NO_PREFILTER+1];
 int ndb_old=0;
-char* dbfiles_old[MAXNUMDB+1];
 Hash<Hit>* previous_hits;
 Hash<char>* premerged_hits;
  
@@ -360,7 +361,7 @@ void help()
   printf("(The -cpu option is inactive since POSIX threads ae not supported on your platform)      \n");
 #endif
   printf("\n");
-  printf("An extended list of options can be obtained by using '--help all' as parameter           \n");
+  printf("An extended list of options can be obtained by using '-help all' as parameter           \n");
   printf("\n");
   printf("Example: %s -i query.fas -oa3m query.a3m -n 2                                            \n",program_name);
   cout<<endl;
@@ -414,11 +415,12 @@ void help_all()
   printf(" -psipred       <dir>  directory with PSIPRED executables (default=%s)                 \n",par.psipred);
   printf(" -psipred_data  <dir>  directory with PSIPRED data (default=%s)                        \n",par.psipred_data);
   printf("\n");
-  printf("Filter options                                                                         \n");
+  printf("Prefilter options                                                                         \n");
   printf(" -nofilter      disable all filter steps                                               \n");
   printf(" -noaddfilter   disable all filter steps (except for fast prefiltering)                \n");
   printf(" -nodbfilter    disable additional filtering of prefiltered HMMs                       \n");
   printf(" -noblockfilter search complete matrix in Viterbi                                      \n");
+  printf(" -maxfilt       max number of hits allowed to pass prefilter 2 (default=%i)       \n",par.maxnumdb);
   printf("\n");
   printf("Filter result alignment (options can be combined):                                     \n");
   printf(" -id   [0,100]  maximum pairwise sequence identity (%%) (def=%i)                       \n",par.max_seqid);
@@ -616,7 +618,7 @@ void ProcessArguments(int argc, char** argv)
           else {strcpy(par.alitabfile,argv[i]);}
         }
       else if (!strcmp(argv[i],"-atab_scop")) alitab_scop=true;
-      else if (!strcmp(argv[i],"-h")|| !strcmp(argv[i],"--help"))
+      else if (!strcmp(argv[i],"-h")|| !strcmp(argv[i],"-help"))
         {
           if (++i>=argc || argv[i][0]=='-') {help(); exit(0);}
           if (!strcmp(argv[i],"all")) {help_all(); exit(0);}
@@ -705,6 +707,7 @@ void ProcessArguments(int argc, char** argv)
       else if (!strcmp(argv[i],"-noblockfilter")) {block_filter=false;}
       else if (!strcmp(argv[i],"-noearlystoppingfilter")) {par.early_stopping_filter=false;}
       else if (!strcmp(argv[i],"-block_len") && (i<argc-1)) par.block_shading_space = atoi(argv[++i]);
+      else if (!strcmp(argv[i],"-maxfilt") && (i<argc-1)) par.maxnumdb = par.maxnumdb_no_prefilter = atoi(argv[++i]);
       else if (!strcmp(argv[i],"-shading_mode") && (i<argc-1)) strcpy(par.block_shading_mode,argv[++i]);
       else if (!strcmp(argv[i],"-prepre_smax_thresh") && (i<argc-1)) par.preprefilter_smax_thresh = atoi(argv[++i]);
       else if (!strcmp(argv[i],"-pre_evalue_thresh") && (i<argc-1)) par.prefilter_evalue_thresh = atof(argv[++i]);
@@ -1968,6 +1971,9 @@ int main(int argc, char **argv)
   par.block_shading->New(16381,NULL);
   par.block_shading_counter->New(16381,0);
 
+  dbfiles_new = new char*[par.maxnumdb_no_prefilter+1];
+  dbfiles_old = new char*[par.maxnumdb+1];
+
   // Prepare index-based databases
   char filename[NAMELEN];
   dbhhm_data_file = fopen(dbhhm, "r");
@@ -2506,6 +2512,8 @@ int main(int argc, char **argv)
   if (par.dbfiles) delete[] par.dbfiles;
   for (int idb=0; idb<ndb_new; idb++) delete[](dbfiles_new[idb]);
   for (int idb=0; idb<ndb_old; idb++) delete[](dbfiles_old[idb]);
+  delete[](dbfiles_new);
+  delete[](dbfiles_old);
   par.block_shading->Reset();
   while (!par.block_shading->End())
     delete[] (par.block_shading->ReadNext()); 
