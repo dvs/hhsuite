@@ -10,7 +10,7 @@
 //// Constants
 /////////////////////////////////////////////////////////////////////////////////////
 
-EXTERN const char VERSION_AND_DATE[]="version 2.0.6 (Jan 2012)";
+EXTERN const char VERSION_AND_DATE[]="version 2.0.7 (Jan 2012)";
 EXTERN const char REFERENCE[]="Soding, J. Protein homology detection by HMM-HMM comparison. Bioinformatics 2005, 21, 951-960.\n";
 EXTERN const char COPYRIGHT[]="(C) Johannes Soeding, Michael Remmert, Andrease Biegert, Andreas Hauser\n";
 EXTERN const int MAXSEQ=65535; //max number of sequences in input alignment (must be <~30000 on cluster nodes)
@@ -87,12 +87,6 @@ EXTERN float S33[NSSPRED][MAXCF][NSSPRED][MAXCF];  // P[B][cf][B'][cf'] =  log2 
 cs::LibraryPseudocounts<cs::AA> *lib_pc;
 cs::ContextLibrary<cs::AA> *context_lib;
 
-// !!! This declaration should be moved to HHblits!!!
-#ifdef HHBLITS
-cs::ContextLibrary<cs::AA> *cs_lib;
-#endif
-
-
 
 /////////////////////////////////////////////////////////////////////////////////////
 // Class declarations
@@ -139,7 +133,6 @@ public:
   int nseqdis;            // maximum number of query or template sequences in output alignments
   char mark;              // which sequences to mark for display in output alignments? 0: auto; 1:all
   char outformat;         // 0: hhr  1: FASTA  2:A2M   3:A3M
-  char mode;              //
                           //0:MAC alignment, master-slave  1:MAC blending, master-slave  2:MAC alignment, combining
 
   int max_seqid;          // Maximum sequence identity with all other sequences in alignment
@@ -190,7 +183,7 @@ public:
   char loc;               // 0: local alignment (wrt. query), 1: global alignement
   char forward;           // 0:Viterbi algorithm  1:Forward algorithm  2: MAC
   char realign;           // realign database hits to be displayed with MAC algorithm
-  char altali;            // find up to this many possibly overlapping alignments
+  int altali;             // find up to this many possibly overlapping alignments
   int columnscore;        // 0: no aa comp corr  1: 1/2(qav+tav) 2: template av freqs 3: query av freqs 4:...
   int half_window_size_local_aa_bg_freqs; // half-window size to average local aa background frequencies
   float corr;             // Weight of correlations between scores with |i-j|<=4
@@ -263,16 +256,12 @@ public:
   // For HHblits prefiltering with SSE2
   short prefilter_gap_open;
   short prefilter_gap_extend;
-  int prefilter_states;               // Anzahl der States im Alphabet
   int prefilter_score_offset;
   int prefilter_bit_factor;
   double prefilter_evalue_thresh;
   int preprefilter_smax_thresh;
 
-  // SCRAP THE FOLLOWING VARIABLES?
-
-  float wstruc;          // weight of structure scores
-  char repmode;          // 1:repeat identification: multiple hits not treated as independent 0: repeat mode off
+  float wstruc;          // weight of structure scores in hhalign
   int idummy;
   float fdummy;
 
@@ -365,7 +354,6 @@ void Parameters::SetDefaults()
   Mgaps=50;                // Above this percentage of gaps, columns are assigned to insert states (for par.M=2)
   calibrate=0;             // default: no calibration
   calm=3;                  // derive P-values from: 0:query calibration  1:template calibration  2:both  3:Neural Network prediction
-  mode=0;                  //
 
   wg=0;                    // 0: use local sequence weights   1: use local ones
 
@@ -395,7 +383,6 @@ void Parameters::SetDefaults()
   shift=-0.03f;            // Shift match score up
   mact=0.3501f;            // Score threshold for MAC alignment in local mode (set to 0.3501 to track user modification)
   corr=0.1f;               // Weight of correlations of scores for |i-j|<=4
-  wstruc=1.0f;             // Weight of structure scores
 
   egq=0.0f;                // no charge for end gaps as default
   egt=0.0f;                // no charge for end gaps as default
@@ -410,15 +397,12 @@ void Parameters::SetDefaults()
   forward=0;               // 0: Viterbi algorithm; 1: Viterbi+stochastic sampling; 3:Maximum Accuracy (MAC) algorithm
   realign=1;               // realign with MAC algorithm
 
-  repmode=0;               // repeats score independently of one another
   columnscore=1;           // Default column score is 1: null model pnul = 1/2 * (q_av(a)+p_av(a))
   half_window_size_local_aa_bg_freqs = 40;
   min_overlap=0;           // automatic minimum overlap used
   opt=0;                   // Default = optimization mode off
   readdefaultsfile=0;      // Default = do not read a defaults file ./.hhdefaults or HOME/.hhdefaults
   maxdbstrlen=200;         // maximum length of database string to be printed in 'Command' line of hhr file
-  mode=0;
-  idummy=0;
   premerge=0;
 
   notags=1;                // neutralize His-tags, FLAG-tags, C-myc-tags
@@ -454,7 +438,6 @@ void Parameters::SetDefaults()
   // For HHblits prefiltering with SSE2
   prefilter_gap_open = 20;
   prefilter_gap_extend = 4;
-  prefilter_states = cs::AS219::kSize;
   prefilter_score_offset = 50;
   prefilter_bit_factor = 4;
   prefilter_evalue_thresh = 1000;
@@ -484,6 +467,9 @@ void Parameters::SetDefaults()
   // parameters for context-specific pseudocounts
   csb = 0.85;
   csw = 1.6;
+
+  wstruc=1.0f;             // Weight of structure score in hhalign
+  idummy=0;
 
   return;
 }

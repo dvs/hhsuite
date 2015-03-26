@@ -1,6 +1,6 @@
 *****************************************************************************
 *****************************************************************************
-   HH-suite for sensitive sequence searching version 2.0.6 (January 2012)
+   HH-suite for sensitive sequence searching version 2.0.7 (January 2012)
 
  (C) Johannes Soeding, Michael Remmert, Andreas Hauser, Andreas Biegert 2012
 
@@ -44,6 +44,11 @@ A dynamically linked version of the programs can be compiled with:
 $ make all
 
 On Mac OS X only dynamic linking is supported.
+
+To compile code for CPUs without SSE3 you can compile with NO_SSE3 set:
+$ make NO_SSE3=1
+To see whether your CPU supports SSE3 you can check the output of:
+$ grep sse3 /prc/cpuinfo)
 
 
 3. Installation

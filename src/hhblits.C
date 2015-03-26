@@ -66,9 +66,13 @@
 #endif
 
 #ifdef HH_SSE3
+#include <pmmintrin.h>   // SSE3
+#define HH_SSE2
+#endif
+
+#ifdef HH_SSE2
 #ifndef __SUNPRO_C
 #include <emmintrin.h>   // SSE2
-#include <pmmintrin.h>   // SSE3
 #else
 #include <sunmedia_intrin.h>
 #endif
@@ -92,6 +96,7 @@ extern "C" {
 #include "context_library.h"
 #include "library_pseudocounts-inl.h"
 #include "abstract_state_matrix.h"
+cs::ContextLibrary<cs::AA> *cs_lib;
 
 #include "util.C"        // imax, fmax, iround, iceil, ifloor, strint, strscn, strcut, substr, uprstr, uprchr, Basename etc.
 #include "list.C"        // list data structure
