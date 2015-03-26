@@ -10,7 +10,7 @@
 //// Constants
 /////////////////////////////////////////////////////////////////////////////////////
 
-EXTERN const char VERSION_AND_DATE[]="version 2.0.10 (Feb 2012)";
+EXTERN const char VERSION_AND_DATE[]="version 2.0.11 (Feb 2012)";
 EXTERN const char REFERENCE[]="Soding, J. Protein homology detection by HMM-HMM comparison. Bioinformatics 2005, 21, 951-960.\n";
 EXTERN const char COPYRIGHT[]="(C) Johannes Soeding, Michael Remmert, Andreas Biegert, Andreas Hauser\n";
 EXTERN const int MAXSEQ=65535; //max number of sequences in input alignment (must be <~30000 on cluster nodes)
@@ -305,7 +305,7 @@ void Parameters::SetDefaultPaths(char *program_path)
     if (testf) { fclose(testf); return;}
   }
 
-  cerr<<endl<<"Error in "<<argv[0]<<": could not find context_data.lib and cs219.lib.\nPlease set the HHLIB environment variable to the HH-suite directory (under Linux: export HHLIB=<hh_dir>).\nThe missing files should be in $HHLIB/data/.\n ";
+  cerr<<endl<<"Error in "<<argv[0]<<": could not find context_data.lib and cs219.lib.\nPlease set the HHLIB environment variable to the HH-suite directory (Linux bash: export HHLIB=<hh_dir>, csh/tcsh: setenv HHLIB=<hh_dir>).\nThe missing files should be in $HHLIB/data/.\n ";
   exit(2);
 }
 
