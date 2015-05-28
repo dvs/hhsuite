@@ -316,6 +316,7 @@ void help(char all=0)
   printf(" -seq <int>     max. number of query/template sequences displayed (default=%i)  \n",par.nseqdis);
   printf(" -aliw <int>    number of columns per line in alignment list (default=%i)       \n",par.aliwidth);
   printf(" -p [0,100]     minimum probability in summary and alignment list (default=%G)  \n",par.p);
+  printf(" -s <float>     minimum score in summary and alignment list (def=%.2g) \n",SMIN);
   printf(" -E [0,inf[     maximum E-value in summary and alignment list (default=%G)      \n",par.E);
   printf(" -Z <int>       maximum number of lines in summary hit list (default=%i)        \n",par.Z);
   printf(" -z <int>       minimum number of lines in summary hit list (default=%i)        \n",par.z);
@@ -567,6 +568,7 @@ void ProcessArguments(int argc, char** argv)
         else if (argv[i][0]>='0' && argv[i][0]<='9') {par.Mgaps=atoi(argv[i]); par.M=2;}
         else cerr<<endl<<"WARNING: Ignoring unknown argument: -M "<<argv[i]<<"\n";
       else if (!strcmp(argv[i],"-p") && (i<argc-1)) par.p = atof(argv[++i]);
+      else if (!strcmp(argv[i],"-s") && (i<argc-1)) SMIN = atof(argv[++i]);
       else if (!strcmp(argv[i],"-P") && (i<argc-1)) par.p = atof(argv[++i]);
       else if (!strcmp(argv[i],"-E") && (i<argc-1)) par.E = atof(argv[++i]);
       else if (!strcmp(argv[i],"-b") && (i<argc-1)) par.b = atoi(argv[++i]);
@@ -675,7 +677,7 @@ void PerformViterbiByWorker(int bin)
     {
       // Break, if no previous_hit with irep is found
       hit[bin]->Viterbi(q,t[bin]);
-      if (hit[bin]->irep>1 && hit[bin]->score <= SMIN) break;
+      if (hit[bin]->irep>1 && hit[bin]->score < SMIN) break;
       hit[bin]->Backtrace(q,t[bin]);
       
       hit[bin]->score_sort = hit[bin]->score_aass;
@@ -722,7 +724,7 @@ void PerformViterbiByWorker(int bin)
       pthread_mutex_unlock(&hitlist_mutex); // unlock access to hitlist
 #endif
 
-      if (hit[bin]->score <= SMIN) break;  // break if score for first hit is already worse than SMIN
+      if (hit[bin]->score < SMIN) break;  // break if score for first hit is already worse than SMIN
     }
 
   return;

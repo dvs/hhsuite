@@ -30,7 +30,7 @@ EXTERN const int HMMSCALE=1000;//Scaling number for log2-values in HMMs
 EXTERN const int NFAMMAX=5119; //Size of hash for counting number of HMMs in each family
 EXTERN const int MAXPROF=32766;//Maximum number of HMM scores for fitting EVD
 EXTERN const float MAXENDGAPFRAC=0.1; //For weighting: include only columns into subalignment i that have a max fraction of seqs with endgap
-EXTERN const float SMIN= 20.;  //Minimum score of hit needed to search for another repeat of same profile: p=exp(-(4-mu)/lamda)=0.01
+EXTERN float SMIN= 20.;  //Minimum score of hit needed to search for another repeat of same profile: p=exp(-(4-mu)/lamda)=0.01
 EXTERN const float LAMDA=0.388; //lamda in score EVD used for -local mode in length correction: S = S-log(Lq*Lt)/LAMDA)
 EXTERN const float LAMDA_GLOB=0.42; //lamda in score EVD used for -global mode
 EXTERN const float PMAX=1E-2;  //Maximum single-repeat p-value that can contribute to whole-protein p-value

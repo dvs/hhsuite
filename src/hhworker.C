@@ -9,13 +9,13 @@ void AlignByWorker(int bin)
   // Prepare q ant t and compare
   PrepareTemplateHMM(q,t[bin],format[bin]);
 
-  // Do HMM-HMM comparison, store results if score>SMIN, and try next best alignment
+  // Do HMM-HMM comparison, store results if score>=SMIN, and try next best alignment
   for (hit[bin]->irep=1; hit[bin]->irep<=par.altali; hit[bin]->irep++)
     {
       if (par.forward==0)
         {
 	  hit[bin]->Viterbi(q,t[bin]);
-          if (hit[bin]->irep>1 && hit[bin]->score <= SMIN) break;
+          if (hit[bin]->irep>1 && hit[bin]->score < SMIN) break;
           hit[bin]->Backtrace(q,t[bin]);
         }
       else if (par.forward==1)
@@ -31,7 +31,7 @@ void AlignByWorker(int bin)
           hit[bin]->BacktraceMAC(q,t[bin]);
         }
       hit[bin]->score_sort = hit[bin]->score_aass;
-      if (hit[bin]->score <= SMIN) hit[bin]->lastrep=1; else hit[bin]->lastrep=0;
+      if (hit[bin]->score < SMIN) hit[bin]->lastrep=1; else hit[bin]->lastrep=0;
       //printf ("%-12.12s  %-12.12s   irep=%-2i  score=%6.2f\n",hit[bin]->name,hit[bin]->fam,hit[bin]->irep,hit[bin]->score);
 
 #ifdef PTHREAD
@@ -74,7 +74,7 @@ void AlignByWorker(int bin)
 #endif
 
       if (par.forward>0) break; // find only best alignment for forward algorithm and stochastic sampling
-      if (hit[bin]->score <= SMIN) break;  // break if score for previous hit is already worse than SMIN
+      if (hit[bin]->score < SMIN) break;  // break if score for previous hit is already worse than SMIN
     }
   return;
 }
