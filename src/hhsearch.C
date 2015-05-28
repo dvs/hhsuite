@@ -477,6 +477,7 @@ void ProcessArguments(int argc, char** argv)
           if (!strcmp(argv[i]+7,"30")) par.matrix=30;
           else if (!strcmp(argv[i]+7,"40")) par.matrix=40;
           else if (!strcmp(argv[i]+7,"50")) par.matrix=50;
+          else if (!strcmp(argv[i]+7,"62")) par.matrix=62;
           else if (!strcmp(argv[i]+7,"65")) par.matrix=65;
           else if (!strcmp(argv[i]+7,"80")) par.matrix=80;
           else cerr<<endl<<"WARNING: Ignoring unknown option "<<argv[i]<<" ...\n";
