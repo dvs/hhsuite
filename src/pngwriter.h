@@ -115,9 +115,9 @@ class pngwriter
    void circle_aux(int xcentre, int ycentre, int x, int y, int red, int green, int blue);
    void circle_aux_blend(int xcentre, int ycentre, int x, int y, double opacity, int red, int green, int blue);
    int check_if_png(char *file_name, FILE **fp);
-   int read_png_info(FILE *fp, png_structp *png_ptr, png_infop *info_ptr);
-   int read_png_image(FILE *fp, png_structp png_ptr, png_infop info_ptr,
- 		       png_bytepp *image, png_uint_32 *width, png_uint_32 *height);
+   // int read_png_info(FILE *fp, png_structp *png_ptr, png_infop *info_ptr);
+   // int read_png_image(FILE *fp, png_structp png_ptr, png_infop info_ptr,
+ 		       // png_bytepp *image, png_uint_32 *width, png_uint_32 *height);
    void flood_fill_internal( int xstart, int ystart,  double start_red, double start_green, double start_blue, double fill_red, double fill_green, double fill_blue);
    void flood_fill_internal_blend( int xstart, int ystart, double opacity,  double start_red, double start_green, double start_blue, double fill_red, double fill_green, double fill_blue);
 
