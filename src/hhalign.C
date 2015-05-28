@@ -167,6 +167,7 @@ void help()
   printf(" -aliw int     number of columns per line in alignment list (def=%i)\n",par.aliwidth);
   printf(" -P <float>    for self-comparison: max p-value of alignments (def=%.2g\n",pself);
   printf(" -p <float>    minimum probability in summary and alignment list (def=%G) \n",par.p);
+  printf(" -s <float>    minimum score in summary and alignment list (def=%.2g) \n",SMIN);
   printf(" -E <float>    maximum E-value in summary and alignment list (def=%G)     \n",par.E);
   printf(" -Z <int>      maximum number of lines in summary hit list (def=%i)       \n",par.Z);
   printf(" -z <int>      minimum number of lines in summary hit list (def=%i)       \n",par.z);
@@ -246,6 +247,7 @@ void help_out()
   printf(" -aliw int      number of columns per line in alignment list (def=%i)\n",par.aliwidth);
   printf(" -P <float>     for self-comparison: max p-value of alignments (def=%.2g\n",pself);
   printf(" -p <float>     minimum probability in summary and alignment list (def=%G) \n",par.p);
+  printf(" -s <float>     minimum score in summary and alignment list (def=%.2g) \n",SMIN);
   printf(" -E <float>     maximum E-value in summary and alignment list (def=%G)     \n",par.E);
   printf(" -Z <int>       maximum number of lines in summary hit list (def=%i)       \n",par.Z);
   printf(" -z <int>       minimum number of lines in summary hit list (def=%i)       \n",par.z);
@@ -501,6 +503,7 @@ void ProcessArguments(int argc, char** argv)
       else if (!strcmp(argv[i],"-v5")) v=5;
       else if (!strcmp(argv[i],"-P") && (i<argc-1)) pself=atof(argv[++i]);
       else if (!strcmp(argv[i],"-p") && (i<argc-1)) par.p = atof(argv[++i]);
+      else if (!strcmp(argv[i],"-s") && (i<argc-1)) SMIN = atof(argv[++i]);
       else if (!strcmp(argv[i],"-e") && (i<argc-1)) par.E = atof(argv[++i]);
       else if (!strcmp(argv[i],"-E") && (i<argc-1)) par.E = atof(argv[++i]);
       else if (!strcmp(argv[i],"-b") && (i<argc-1)) par.b = atoi(argv[++i]);
@@ -547,12 +550,24 @@ void ProcessArguments(int argc, char** argv)
       else if (!strcmp(argv[i],"-diff") && (i<argc-1)) par.Ndiff=atoi(argv[++i]); 
       else if (!strcmp(argv[i],"-Gonnet")) par.matrix=0; 
       else if (!strcmp(argv[i],"-HSDM")) par.matrix=1; 
-      else if (!strcmp(argv[i],"-BLOSUM50")) par.matrix=2; 
-      else if (!strcmp(argv[i],"-Blosum50")) par.matrix=2; 
-      else if (!strcmp(argv[i],"-B50")) par.matrix=2; 
-      else if (!strcmp(argv[i],"-BLOSUM62")) par.matrix=3; 
-      else if (!strcmp(argv[i],"-Blosum62")) par.matrix=3; 
-      else if (!strcmp(argv[i],"-B62")) par.matrix=3; 
+      else if (!strcmp(argv[i],"-BLOSUM30")) par.matrix=30;
+      else if (!strcmp(argv[i],"-Blosum30")) par.matrix=30;
+      else if (!strcmp(argv[i],"-B30")) par.matrix=30;
+      else if (!strcmp(argv[i],"-BLOSUM40")) par.matrix=40;
+      else if (!strcmp(argv[i],"-Blosum40")) par.matrix=40;
+      else if (!strcmp(argv[i],"-B40")) par.matrix=40;
+      else if (!strcmp(argv[i],"-BLOSUM50")) par.matrix=50;
+      else if (!strcmp(argv[i],"-Blosum50")) par.matrix=50;
+      else if (!strcmp(argv[i],"-B50")) par.matrix=50;
+      else if (!strcmp(argv[i],"-BLOSUM62")) par.matrix=62;
+      else if (!strcmp(argv[i],"-Blosum62")) par.matrix=62;
+      else if (!strcmp(argv[i],"-B62")) par.matrix=62;
+      else if (!strcmp(argv[i],"-BLOSUM65")) par.matrix=65;
+      else if (!strcmp(argv[i],"-Blosum65")) par.matrix=65;
+      else if (!strcmp(argv[i],"-B65")) par.matrix=65;
+      else if (!strcmp(argv[i],"-BLOSUM80")) par.matrix=80;
+      else if (!strcmp(argv[i],"-Blosum80")) par.matrix=80;
+      else if (!strcmp(argv[i],"-B80")) par.matrix=80;
       else if (!strcmp(argv[i],"-pcm") && (i<argc-1)) par.pcm=atoi(argv[++i]); 
       else if (!strcmp(argv[i],"-pca") && (i<argc-1)) par.pca=atof(argv[++i]); 
       else if (!strcmp(argv[i],"-pcb") && (i<argc-1)) par.pcb=atof(argv[++i]); 
@@ -977,7 +992,7 @@ int main(int argc, char **argv)
       fclose(strucf);
     }
   
-  // Do (self-)comparison, store results if score>SMIN, and try next best alignment
+  // Do (self-)comparison, store results if score>=SMIN, and try next best alignment
   if (v>=2) 
     {
       if (par.forward==2)       printf("Using maximum accuracy (MAC) alignment algorithm ...\n");
@@ -991,7 +1006,7 @@ int main(int argc, char **argv)
       if (par.forward==0)        // generate Viterbi alignment
 	{
 	  hit.Viterbi(q,t,Sstruc);
-	  if (hit.irep>1 && hit.irep>par.hitrank && hit.score<=SMIN && !(hit.Pvalt<pself && hit.score>0 )) {
+	  if (hit.irep>1 && hit.irep>par.hitrank && hit.score<SMIN && !(hit.Pvalt<pself && hit.score>0 )) {
 	    hit = hitlist.ReadLast(); // last alignment was not significant => read last (significant) hit from list
 	    break;
 	  }
@@ -1011,7 +1026,7 @@ int main(int argc, char **argv)
 	  hit.Forward(q,t,Pstruc); 
 	  hit.Backward(q,t); 
 	  hit.MACAlignment(q,t);
-	  if (hit.irep>1 && hit.irep>par.hitrank && hit.score<=SMIN && !(hit.Pvalt<pself && hit.score>0 )) {
+	  if (hit.irep>1 && hit.irep>par.hitrank && hit.score<SMIN && !(hit.Pvalt<pself && hit.score>0 )) {
 	    hit = hitlist.ReadLast(); // last alignment was not significant => read last (significant) hit from list
 	    break;
 	  }
@@ -1020,7 +1035,7 @@ int main(int argc, char **argv)
       //fprintf (stderr,"%-12.12s  %-12.12s   irep=%-2i  score=%6.2f hit.Pvalt=%.2g\n",hit.name,hit.fam,hit.irep,hit.score,hit.Pvalt);
 
       hitlist.Push(hit);      // insert hit at beginning of list (last repeats first!) and do next alignment
-      if (hit.irep>=par.hitrank && hit.score<=SMIN && !(hit.Pvalt<pself && hit.score>0 )) break; // last score too bad
+      if (hit.irep>=par.hitrank && hit.score<SMIN && !(hit.Pvalt<pself && hit.score>0 )) break; // last score too bad
       if (hit.irep>=imax(par.hitrank,par.altali)) break; // max number of alignments reached
       hit.irep++;
     } 
@@ -1240,7 +1255,7 @@ int main(int argc, char **argv)
 	    {
 	      hit = hitlist.ReadNext();
 
-	      if (nhits>=Nali && Nstochali) 
+	      if (nhits>Nali && Nstochali)
 		{
 // 		  int i0 = hit.i[hit.nsteps];
 // 		  int j0 = hit.j[hit.nsteps];
@@ -1264,7 +1279,7 @@ int main(int argc, char **argv)
 		  if (hit.Probab < par.p && nhits>=par.z) continue;
 		  if (hit.Eval > par.E && nhits>=par.z) continue;
 		}
-	      if (nhits<Nali && (dotali==2 || aliindices[nhits])) 
+	      if (nhits<=Nali && (dotali==2 || aliindices[nhits]))
 		{
 		  for (int step=hit.nsteps; step>=1; step--)
 		    ali[ hit.i[step] ][ hit.j[step] ]++;

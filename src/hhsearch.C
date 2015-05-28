@@ -223,6 +223,7 @@ void help(char all=0)
   printf(" -nodssp        don't show DSSP 2ndary structure in alignments (default=show)  \n");
   printf(" -ssconf        show confidences for predicted 2ndary structure in alignments\n");
   printf(" -p <float>     minimum probability in summary and alignment list (def=%G)   \n",par.p);
+  printf(" -s <float>     minimum score in summary and alignment list (def=%.2g) \n",SMIN);
   printf(" -E <float>     maximum E-value in summary and alignment list (def=%G)       \n",par.E);
   printf(" -Z <int>       maximum number of lines in summary hit list (def=%i)         \n",par.Z);
   printf(" -z <int>       minimum number of lines in summary hit list (def=%i)         \n",par.z);
@@ -449,6 +450,7 @@ void ProcessArguments(int argc, char** argv)
       else if (!strcmp(argv[i],"-v0")) v=0;
       else if (!strcmp(argv[i],"-v1")) v=1;
       else if (!strcmp(argv[i],"-p") && (i<argc-1)) par.p = atof(argv[++i]);
+      else if (!strcmp(argv[i],"-s") && (i<argc-1)) SMIN = atof(argv[++i]);
       else if (!strcmp(argv[i],"-P") && (i<argc-1)) par.p = atof(argv[++i]);
       else if (!strcmp(argv[i],"-E") && (i<argc-1)) par.E = atof(argv[++i]);
       else if (!strcmp(argv[i],"-b") && (i<argc-1)) par.b = atoi(argv[++i]);
@@ -477,6 +479,7 @@ void ProcessArguments(int argc, char** argv)
           if (!strcmp(argv[i]+7,"30")) par.matrix=30;
           else if (!strcmp(argv[i]+7,"40")) par.matrix=40;
           else if (!strcmp(argv[i]+7,"50")) par.matrix=50;
+          else if (!strcmp(argv[i]+7,"62")) par.matrix=62;
           else if (!strcmp(argv[i]+7,"65")) par.matrix=65;
           else if (!strcmp(argv[i]+7,"80")) par.matrix=80;
           else cerr<<endl<<"WARNING: Ignoring unknown option "<<argv[i]<<" ...\n";
