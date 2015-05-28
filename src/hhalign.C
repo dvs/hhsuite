@@ -167,6 +167,7 @@ void help()
   printf(" -aliw int     number of columns per line in alignment list (def=%i)\n",par.aliwidth);
   printf(" -P <float>    for self-comparison: max p-value of alignments (def=%.2g\n",pself);
   printf(" -p <float>    minimum probability in summary and alignment list (def=%G) \n",par.p);
+  printf(" -s <float>    minimum score in summary and alignment list (def=%.2g) \n",SMIN);
   printf(" -E <float>    maximum E-value in summary and alignment list (def=%G)     \n",par.E);
   printf(" -Z <int>      maximum number of lines in summary hit list (def=%i)       \n",par.Z);
   printf(" -z <int>      minimum number of lines in summary hit list (def=%i)       \n",par.z);
@@ -246,6 +247,7 @@ void help_out()
   printf(" -aliw int      number of columns per line in alignment list (def=%i)\n",par.aliwidth);
   printf(" -P <float>     for self-comparison: max p-value of alignments (def=%.2g\n",pself);
   printf(" -p <float>     minimum probability in summary and alignment list (def=%G) \n",par.p);
+  printf(" -s <float>     minimum score in summary and alignment list (def=%.2g) \n",SMIN);
   printf(" -E <float>     maximum E-value in summary and alignment list (def=%G)     \n",par.E);
   printf(" -Z <int>       maximum number of lines in summary hit list (def=%i)       \n",par.Z);
   printf(" -z <int>       minimum number of lines in summary hit list (def=%i)       \n",par.z);
@@ -501,6 +503,7 @@ void ProcessArguments(int argc, char** argv)
       else if (!strcmp(argv[i],"-v5")) v=5;
       else if (!strcmp(argv[i],"-P") && (i<argc-1)) pself=atof(argv[++i]);
       else if (!strcmp(argv[i],"-p") && (i<argc-1)) par.p = atof(argv[++i]);
+      else if (!strcmp(argv[i],"-s") && (i<argc-1)) SMIN = atof(argv[++i]);
       else if (!strcmp(argv[i],"-e") && (i<argc-1)) par.E = atof(argv[++i]);
       else if (!strcmp(argv[i],"-E") && (i<argc-1)) par.E = atof(argv[++i]);
       else if (!strcmp(argv[i],"-b") && (i<argc-1)) par.b = atoi(argv[++i]);
@@ -989,7 +992,7 @@ int main(int argc, char **argv)
       fclose(strucf);
     }
   
-  // Do (self-)comparison, store results if score>SMIN, and try next best alignment
+  // Do (self-)comparison, store results if score>=SMIN, and try next best alignment
   if (v>=2) 
     {
       if (par.forward==2)       printf("Using maximum accuracy (MAC) alignment algorithm ...\n");
@@ -1003,7 +1006,7 @@ int main(int argc, char **argv)
       if (par.forward==0)        // generate Viterbi alignment
 	{
 	  hit.Viterbi(q,t,Sstruc);
-	  if (hit.irep>1 && hit.irep>par.hitrank && hit.score<=SMIN && !(hit.Pvalt<pself && hit.score>0 )) {
+	  if (hit.irep>1 && hit.irep>par.hitrank && hit.score<SMIN && !(hit.Pvalt<pself && hit.score>0 )) {
 	    hit = hitlist.ReadLast(); // last alignment was not significant => read last (significant) hit from list
 	    break;
 	  }
@@ -1023,7 +1026,7 @@ int main(int argc, char **argv)
 	  hit.Forward(q,t,Pstruc); 
 	  hit.Backward(q,t); 
 	  hit.MACAlignment(q,t);
-	  if (hit.irep>1 && hit.irep>par.hitrank && hit.score<=SMIN && !(hit.Pvalt<pself && hit.score>0 )) {
+	  if (hit.irep>1 && hit.irep>par.hitrank && hit.score<SMIN && !(hit.Pvalt<pself && hit.score>0 )) {
 	    hit = hitlist.ReadLast(); // last alignment was not significant => read last (significant) hit from list
 	    break;
 	  }
@@ -1032,7 +1035,7 @@ int main(int argc, char **argv)
       //fprintf (stderr,"%-12.12s  %-12.12s   irep=%-2i  score=%6.2f hit.Pvalt=%.2g\n",hit.name,hit.fam,hit.irep,hit.score,hit.Pvalt);
 
       hitlist.Push(hit);      // insert hit at beginning of list (last repeats first!) and do next alignment
-      if (hit.irep>=par.hitrank && hit.score<=SMIN && !(hit.Pvalt<pself && hit.score>0 )) break; // last score too bad
+      if (hit.irep>=par.hitrank && hit.score<SMIN && !(hit.Pvalt<pself && hit.score>0 )) break; // last score too bad
       if (hit.irep>=imax(par.hitrank,par.altali)) break; // max number of alignments reached
       hit.irep++;
     } 
