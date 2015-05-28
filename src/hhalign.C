@@ -1252,7 +1252,7 @@ int main(int argc, char **argv)
 	    {
 	      hit = hitlist.ReadNext();
 
-	      if (nhits>=Nali && Nstochali) 
+	      if (nhits>Nali && Nstochali)
 		{
 // 		  int i0 = hit.i[hit.nsteps];
 // 		  int j0 = hit.j[hit.nsteps];
@@ -1276,7 +1276,7 @@ int main(int argc, char **argv)
 		  if (hit.Probab < par.p && nhits>=par.z) continue;
 		  if (hit.Eval > par.E && nhits>=par.z) continue;
 		}
-	      if (nhits<Nali && (dotali==2 || aliindices[nhits])) 
+	      if (nhits<=Nali && (dotali==2 || aliindices[nhits]))
 		{
 		  for (int step=hit.nsteps; step>=1; step--)
 		    ali[ hit.i[step] ][ hit.j[step] ]++;
