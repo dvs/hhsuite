@@ -1199,6 +1199,7 @@ void pngwriter::filledcircle(int xcentre, int ycentre, int radius, double red, d
 /////////////////////////////////////////////////
 
 // Modified with Mikkel's patch
+#if 0
 void pngwriter::readfromfile(char * name)
 {
    FILE            *fp;
@@ -1468,13 +1469,16 @@ aliases
 
    fclose(fp);
 }
+#endif // if 0
 
 ///////////////////////////////////////////////////////
 
+/*
 void pngwriter::readfromfile(const char * name)
 {
    this->readfromfile((char *)(name));
 }
+*/
 
 /////////////////////////////////////////////////////////
 int pngwriter::check_if_png(char *file_name, FILE **fp)
@@ -1511,6 +1515,7 @@ int pngwriter::check_if_png(char *file_name, FILE **fp)
 }
 
 ///////////////////////////////////////////////////////
+#if 0
 int pngwriter::read_png_info(FILE *fp, png_structp *png_ptr, png_infop *info_ptr)
 {
    *png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
@@ -1544,8 +1549,10 @@ int pngwriter::read_png_info(FILE *fp, png_structp *png_ptr, png_infop *info_ptr
 
    return 1;
 }
+#endif // if 0
 
 ////////////////////////////////////////////////////////////
+#if 0
 int pngwriter::read_png_image(FILE *fp, png_structp png_ptr, png_infop info_ptr,
 			      png_bytepp *image, png_uint_32 *width, png_uint_32 *height)
 {
@@ -1592,6 +1599,7 @@ int pngwriter::read_png_image(FILE *fp, png_structp png_ptr, png_infop info_ptr,
 
    return 1;
 }
+#endif // if 0
 
 ///////////////////////////////////
 int pngwriter::getheight(void)
