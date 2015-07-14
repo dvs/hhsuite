@@ -1084,7 +1084,7 @@ int HMM::ReadHMMer(FILE* dbf, char* filestr)
 /////////////////////////////////////////////////////////////////////////////////////
 //// Read an HMM from a HMMER3 .hmm file; return 0 at end of file
 /////////////////////////////////////////////////////////////////////////////////////
-int HMM::ReadHMMer3(FILE* dbf, char* filestr)
+int HMM::ReadHMMer3(FILE* dbf, char* filestr, char* header_line)
 {
   char line[LINELEN]="";    // input line
   char desc[DESCLEN]="";    // description of family
@@ -1098,6 +1098,12 @@ int HMM::ReadHMMer3(FILE* dbf, char* filestr)
   char* annotchr;           // consensus amino acids in ASCII format, or, in HMMER format, the reference annotation character in insert line
   annotchr = new char[par.maxres]; // consensus amino acids in ASCII format, or, in HMMER format, the reference annotation character in insert line
   static int warn=0;
+  char format_version = 'b';// HMMER3/b [3.0 | March 2010]
+
+  if (header_line && strlen(header_line) > 7)
+    {
+      format_version = lwrchr(header_line[7]); // HMMER3/f [3.1b1 | May 2013]
+    }
 
   L=0;
   Neff_HMM=0;
@@ -1341,6 +1347,11 @@ int HMM::ReadHMMer3(FILE* dbf, char* filestr)
 	      // Ignore MAP annotation
 	      ptr = strscn(ptr); //find next word
 	      ptr = strscn_ws(ptr); // ignore word
+              if (format_version >= 'f')
+                { // Ignore CONS annotation
+                  ptr = strscn(ptr);
+                  ptr = strscn_ws(ptr);
+                }
 
 	      // Read RF and CS annotation
 	      ptr = strscn(ptr);
@@ -1348,6 +1359,11 @@ int HMM::ReadHMMer3(FILE* dbf, char* filestr)
               annotchr[i]=uprchr(*ptr);
               if (*ptr!='-' && *ptr!=' ' && *ptr!='X' && *ptr!='x') annot=1;
               ptr = strscn_ws(ptr);
+              if (format_version >= 'f')
+                { // Ignore MM annotation
+                  ptr = strscn(ptr);
+                  ptr = strscn_ws(ptr);
+                }
 
               ptr = strscn(ptr);
               switch (*ptr)
