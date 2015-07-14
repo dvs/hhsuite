@@ -1385,7 +1385,7 @@ int main(int argc, char **argv)
 	      if (!strncmp(line,"HMMER3",6))      // read HMMER3 format
                 {
                   format[bin] = 1;
-                  read_from_db = t[bin]->ReadHMMer3(dbf,dbfiles[idb]);
+                  read_from_db = t[bin]->ReadHMMer3(dbf,dbfiles[idb],line);
 		  par.hmmer_used = true;
                 }
               else if (!strncmp(line,"HMMER",5))      // read HMMER format
