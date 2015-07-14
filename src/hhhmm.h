@@ -48,7 +48,7 @@ public:
     int ReadHMMer(FILE* dbf, char* filestr=NULL);
 
     // Read an HMM from a HMMer3 .hmm file; return 0 at end of file
-    int ReadHMMer3(FILE* dbf, char* filestr=NULL);
+    int ReadHMMer3(FILE* dbf, char* filestr=NULL, char* header_line=NULL);
 
     // Add transition pseudocounts to HMM
     void AddTransitionPseudocounts(float gapd=par.gapd, float gape=par.gape, float gapf=par.gapf, float gapg=par.gapg, float gaph=par.gaph, float gapi=par.gapi, float gapb=par.gapb);
