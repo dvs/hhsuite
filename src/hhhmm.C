@@ -1347,6 +1347,7 @@ int HMM::ReadHMMer3(FILE* dbf, char* filestr)
               if (!ptr) return Warning(dbf,line,name);
               annotchr[i]=uprchr(*ptr);
               if (*ptr!='-' && *ptr!=' ' && *ptr!='X' && *ptr!='x') annot=1;
+              ptr = strscn_ws(ptr);
 
               ptr = strscn(ptr);
               switch (*ptr)
