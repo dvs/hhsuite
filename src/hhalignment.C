@@ -539,11 +539,9 @@ void Alignment::Compress(const char infile[])
       // Warn if alignment is ment to be -M first or -M <%> instead of A2M/A3M
       if (v>=2 && strchr(seq[kfirst],'-') ) // Seed/query sequence contains a gap ...
         {
-	  unsigned int len = strlen(seq[kfirst])-1;
           for (k=1; k<N_in; ++k)
 	    {
 	      if (keep[k] && strcount(seq[k],'a','z')) break;
-	      if (strlen(seq[k])!= len) k=N_in; 
 	    }
           if (k>=N_in) // ... but alignment contains no lower case residue
             fprintf(stderr,"WARNING: input alignment %s looks like aligned FASTA instead of A2M/A3M format. Consider using '-M first' or '-M 50'\n",infile);
