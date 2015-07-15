@@ -223,7 +223,7 @@ void help(char all=0)
   printf(" -nodssp        don't show DSSP 2ndary structure in alignments (default=show)  \n");
   printf(" -ssconf        show confidences for predicted 2ndary structure in alignments\n");
   printf(" -p <float>     minimum probability in summary and alignment list (def=%G)   \n",par.p);
-  printf(" -s <float>     minimum score in summary and alignment list (def=%.2g) \n",SMIN);
+  printf(" -s <float>     minimum score for the alternative hits (def=%.2g) \n",SMIN);
   printf(" -E <float>     maximum E-value in summary and alignment list (def=%G)       \n",par.E);
   printf(" -Z <int>       maximum number of lines in summary hit list (def=%i)         \n",par.Z);
   printf(" -z <int>       minimum number of lines in summary hit list (def=%i)         \n",par.z);

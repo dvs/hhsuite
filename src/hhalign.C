@@ -167,7 +167,7 @@ void help()
   printf(" -aliw int     number of columns per line in alignment list (def=%i)\n",par.aliwidth);
   printf(" -P <float>    for self-comparison: max p-value of alignments (def=%.2g\n",pself);
   printf(" -p <float>    minimum probability in summary and alignment list (def=%G) \n",par.p);
-  printf(" -s <float>    minimum score in summary and alignment list (def=%.2g) \n",SMIN);
+  printf(" -s <float>    minimum score for the alternative hits (def=%.2g) \n",SMIN);
   printf(" -E <float>    maximum E-value in summary and alignment list (def=%G)     \n",par.E);
   printf(" -Z <int>      maximum number of lines in summary hit list (def=%i)       \n",par.Z);
   printf(" -z <int>      minimum number of lines in summary hit list (def=%i)       \n",par.z);
@@ -247,7 +247,7 @@ void help_out()
   printf(" -aliw int      number of columns per line in alignment list (def=%i)\n",par.aliwidth);
   printf(" -P <float>     for self-comparison: max p-value of alignments (def=%.2g\n",pself);
   printf(" -p <float>     minimum probability in summary and alignment list (def=%G) \n",par.p);
-  printf(" -s <float>     minimum score in summary and alignment list (def=%.2g) \n",SMIN);
+  printf(" -s <float>     minimum score for the alternative hits (def=%.2g) \n",SMIN);
   printf(" -E <float>     maximum E-value in summary and alignment list (def=%G)     \n",par.E);
   printf(" -Z <int>       maximum number of lines in summary hit list (def=%i)       \n",par.Z);
   printf(" -z <int>       minimum number of lines in summary hit list (def=%i)       \n",par.z);
