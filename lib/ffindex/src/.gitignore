@@ -1,0 +1,9 @@
+*.so*
+*.o
+*.a
+ffindex_unpack
+ffindex_apply
+ffindex_modify
+ffindex_get
+ffindex_from_fasta
+ffindex_build
