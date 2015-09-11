@@ -1083,13 +1083,19 @@ int main(int argc, char **argv)
 //        printf("\n");
     }
 
-  // Append last alignment to alitabfile
+  // Write all the alignments to alitabfile
   if (*par.alitabfile) 
     {
+      Hit hit_cur;
       FILE* alitabf=NULL;
       if (strcmp(par.alitabfile,"stdout")) alitabf = fopen(par.alitabfile, "w"); else alitabf = stdout;
       if (!alitabf) OpenFileError(par.alitabfile);
-      WriteToAlifile(alitabf,&hit);
+      hitlist.Reset();
+      while (!hitlist.End())
+        {
+          hit_cur = hitlist.ReadNext();
+          WriteToAlifile(alitabf,&hit_cur);
+        }
       fclose(alitabf);
     }
 
