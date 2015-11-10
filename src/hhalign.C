@@ -122,6 +122,7 @@ float probmin_tc=0.05;       // 5% minimum posterior probability for printing pa
 
 int dotW=10;                 // average score of dot plot over window [i-W..i+W]
 float dotthr=0.5;            // probability/score threshold for dot plot
+int dotgrayscale=0;          // dotplot is in grayscale (for -norealign)
 int dotscale=600;            // size scale of dotplot
 char dotali=0;               // show no alignments in dotplot
 float dotsat=0.3;            // saturation of grid and alignments in dot plot
@@ -178,6 +179,7 @@ void help()
 #ifdef HH_PNG
   printf("Dotplot options:\n");
   printf(" -dthr <float> probability/score threshold for dotplot (default=%.2f)        \n",dotthr);
+  printf(" -dgrayscale   draw dotmap in grayscale, use -dthr as max. value (for -norealign, it is off by default)\n");
   printf(" -dsca <int>   if value <= 20: size of dot plot unit box in pixels           \n");
   printf("               if value > 20: maximum dot plot size in pixels (default=%i)   \n",dotscale);
   printf(" -dwin <int>   average score over window [i-W..i+W] (for -norealign) (def=%i)\n",dotW);
@@ -261,6 +263,7 @@ void help_out()
   printf("Dotplot options:\n");
   printf(" -dwin int      average score in dotplot over window [i-W..i+W] (def=%i)   \n",dotW);
   printf(" -dthr float    score threshold for dotplot (default=%.2f)                 \n",dotthr);
+  printf(" -dgrayscale   draw dotmap in grayscale, use -dthr as max. value (for -norealign, it is off by default)\n");
   printf(" -dsca int      size of dot plot box in pixels  (default=%i)               \n",dotscale);
   printf(" -dali <list>   show alignments with indices in <list> in dot plot\n");
   printf("                <list> = <index1> ... <indexN>  or  <list> = all              \n");
@@ -514,7 +517,7 @@ void ProcessArguments(int argc, char** argv)
       else if (!strncmp(argv[i],"-nopred",7)) par.showpred=0;
       else if (!strncmp(argv[i],"-nodssp",7)) par.showdssp=0;
       else if (!strncmp(argv[i],"-ssconf",7)) par.showconf=1;
-      else if (!strncmp(argv[i],"-mark",7)) par.mark=1;
+      else if (!strncmp(argv[i],"-mark",5)) par.mark=1;
       else if (!strcmp(argv[i],"-seq") && (i<argc-1))  par.nseqdis=atoi(argv[++i]); 
       else if (!strcmp(argv[i],"-aliw") && (i<argc-1)) par.aliwidth=atoi(argv[++i]); 
       else if (!strcmp(argv[i],"-id") && (i<argc-1))   par.max_seqid=atoi(argv[++i]); 
@@ -522,6 +525,7 @@ void ProcessArguments(int argc, char** argv)
       else if (!strcmp(argv[i],"-dwin") && (i<argc-1)) dotW=atoi(argv[++i]); 
       else if (!strcmp(argv[i],"-dsca") && (i<argc-1)) dotscale=atoi(argv[++i]); 
       else if (!strcmp(argv[i],"-dthr") && (i<argc-1)) dotthr=atof(argv[++i]); 
+      else if (!strncmp(argv[i],"-dgrayscale",11)) dotgrayscale=1;
       else if (!strcmp(argv[i],"-dali") && (i<argc-1))  
 	{
 	  dotali=1; 
@@ -1348,9 +1352,16 @@ int main(int argc, char **argv)
 		    {	
 		      sum+=s[i+w][j+w];
 		      l++;
-		    }		 
-		dotval=0.0;
-	      } 
+		    }
+                if (dotgrayscale)
+                  {
+		    dotval=fmin(1.0, fmax(0.0, 1.0 - 1.0*sum/l/dotthr));
+                  }
+                else
+                  {
+		    dotval=0.0;
+                  }
+	      }
 	    else 
 	      {
 		sum = hit.B_MM[i][j];
@@ -1361,7 +1372,7 @@ int main(int argc, char **argv)
 
 	    if (i==j && hit.self) {b=r=g=0.0;} 
 	    else if (Nstochali && alisto[i][j]) {r=b=1-0.9*alisto[i][j]; g=1;}
-	    else if ((sum<=0.05 && par.realign) || (sum<=dotthr*l && !par.realign)) 
+	    else if ((sum<=0.05 && par.realign) || (!dotgrayscale && sum<=dotthr*l && !par.realign))
 	      {
 	    	if (dotali && ali[i][j]) {r=g=1-dotsat; b=1.0;}
 	     	else 
