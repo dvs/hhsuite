@@ -517,7 +517,7 @@ void ProcessArguments(int argc, char** argv)
       else if (!strncmp(argv[i],"-nopred",7)) par.showpred=0;
       else if (!strncmp(argv[i],"-nodssp",7)) par.showdssp=0;
       else if (!strncmp(argv[i],"-ssconf",7)) par.showconf=1;
-      else if (!strncmp(argv[i],"-mark",7)) par.mark=1;
+      else if (!strncmp(argv[i],"-mark",5)) par.mark=1;
       else if (!strcmp(argv[i],"-seq") && (i<argc-1))  par.nseqdis=atoi(argv[++i]); 
       else if (!strcmp(argv[i],"-aliw") && (i<argc-1)) par.aliwidth=atoi(argv[++i]); 
       else if (!strcmp(argv[i],"-id") && (i<argc-1))   par.max_seqid=atoi(argv[++i]); 
