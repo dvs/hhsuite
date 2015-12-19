@@ -1087,22 +1087,6 @@ int main(int argc, char **argv)
 //        printf("\n");
     }
 
-  // Write all the alignments to alitabfile
-  if (*par.alitabfile) 
-    {
-      Hit hit_cur;
-      FILE* alitabf=NULL;
-      if (strcmp(par.alitabfile,"stdout")) alitabf = fopen(par.alitabfile, "w"); else alitabf = stdout;
-      if (!alitabf) OpenFileError(par.alitabfile);
-      hitlist.Reset();
-      while (!hitlist.End())
-        {
-          hit_cur = hitlist.ReadNext();
-          WriteToAlifile(alitabf,&hit_cur);
-        }
-      fclose(alitabf);
-    }
-
   // Fit EVD (with lamda, mu) to score distribution?
   if (par.forward==0)
     {
@@ -1122,6 +1106,22 @@ int main(int argc, char **argv)
 	hitlist.Push(hit);      //insert hit at beginning of list (last repeats first!)
 	(hit.irep)++;
       }
+
+  // Write all the alignments to alitabfile
+  if (*par.alitabfile)
+    {
+      Hit hit_cur;
+      FILE* alitabf=NULL;
+      if (strcmp(par.alitabfile,"stdout")) alitabf = fopen(par.alitabfile, "w"); else alitabf = stdout;
+      if (!alitabf) OpenFileError(par.alitabfile);
+      hitlist.Reset();
+      while (!hitlist.End())
+        {
+          hit_cur = hitlist.ReadNext();
+          WriteToAlifile(alitabf,&hit_cur);
+        }
+      fclose(alitabf);
+    }
 
   // Print FASTA or A2M alignments?
   if (*par.pairwisealisfile) {
