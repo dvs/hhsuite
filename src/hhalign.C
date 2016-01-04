@@ -125,6 +125,7 @@ float probmin_tc=0.05;       // 5% minimum posterior probability for printing pa
 int dotW=10;                 // average score of dot plot over window [i-W..i+W]
 float dotthr=0.5;            // probability/score threshold for dot plot (and also for DotHelix algorithm when used)
 int dothelix=0;              // enable DotHelix algorithm
+int dothelix_minlen=0;       // minimum segment length to draw when DotHelix algorithm is used
 int dotgrayscale=0;          // dotplot is in grayscale (for -norealign)
 int dotscale=600;            // size scale of dotplot
 char dotali=0;               // show no alignments in dotplot
@@ -530,7 +531,8 @@ void ProcessArguments(int argc, char** argv)
       else if (!strcmp(argv[i],"-dwin") && (i<argc-1)) dotW=atoi(argv[++i]); 
       else if (!strcmp(argv[i],"-dsca") && (i<argc-1)) dotscale=atoi(argv[++i]); 
       else if (!strcmp(argv[i],"-dthr") && (i<argc-1)) dotthr=atof(argv[++i]); 
-      else if (!strncmp(argv[i],"-dothelix", 9)) dothelix=1; 
+      else if (!strncmp(argv[i],"-dothelix", 9)) dothelix=1;
+      else if (!strncmp(argv[i],"-dh-minlen", 10) && (i<argc-1)) dothelix_minlen=atoi(argv[++i]);
       else if (!strncmp(argv[i],"-dgrayscale",11)) dotgrayscale=1;
       else if (!strcmp(argv[i],"-dali") && (i<argc-1))  
 	{
@@ -1472,6 +1474,10 @@ int main(int argc, char **argv)
               for(unsigned int k = 0; k < arr.size(); k++)
                 {
                   diagonal_segment seg = arr[k];
+                  if (dothelix_minlen > 0 && seg.end - seg.start + 1 < dothelix_minlen)
+                    {
+                        continue; // the segment is too short to be shown
+                    }
                   for (int l = seg.start; l <= seg.end; l++)
                     {
                       j = (d >= 0) ? l + 1 : l - d + 1;
@@ -1486,6 +1492,8 @@ int main(int argc, char **argv)
                 }
 #endif
             }
+            // ! dbg
+            // fprintf(stderr, "DotHelix: Done.\n");
         }
 
       png.close();
