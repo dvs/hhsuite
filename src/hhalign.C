@@ -105,6 +105,8 @@ using std::ofstream;
 #include "pngwriter.cc"  //PNGWriter (http://pngwriter.sourceforge.net/)
 #endif	    
 
+#include "dothelix.h"
+
 /////////////////////////////////////////////////////////////////////////////////////
 // Global variables 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -121,7 +123,8 @@ char* tcfile=NULL;           // TCoffee output file name
 float probmin_tc=0.05;       // 5% minimum posterior probability for printing pairs of residues for TCoffee
 
 int dotW=10;                 // average score of dot plot over window [i-W..i+W]
-float dotthr=0.5;            // probability/score threshold for dot plot
+float dotthr=0.5;            // probability/score threshold for dot plot (and also for DotHelix algorithm when used)
+int dothelix=0;              // enable DotHelix algorithm
 int dotgrayscale=0;          // dotplot is in grayscale (for -norealign)
 int dotscale=600;            // size scale of dotplot
 char dotali=0;               // show no alignments in dotplot
@@ -183,6 +186,7 @@ void help()
   printf(" -dsca <int>   if value <= 20: size of dot plot unit box in pixels           \n");
   printf("               if value > 20: maximum dot plot size in pixels (default=%i)   \n",dotscale);
   printf(" -dwin <int>   average score over window [i-W..i+W] (for -norealign) (def=%i)\n",dotW);
+  printf(" -dothelix     enables the DotHelix algorithm for the dotplot (then -dwin is irrelevant)\n");
   printf(" -dali <list>  show alignments with indices in <list> in dot plot            \n");
   printf("               <list> = <index1> ... <indexN>  or  <list> = all              \n");
   printf("\n");         
@@ -263,6 +267,7 @@ void help_out()
   printf("Dotplot options:\n");
   printf(" -dwin int      average score in dotplot over window [i-W..i+W] (def=%i)   \n",dotW);
   printf(" -dthr float    score threshold for dotplot (default=%.2f)                 \n",dotthr);
+  printf(" -dothelix     enables the DotHelix algorithm for the dotplot (then -dwin is irrelevant)\n");
   printf(" -dgrayscale   draw dotmap in grayscale, use -dthr as max. value (for -norealign, it is off by default)\n");
   printf(" -dsca int      size of dot plot box in pixels  (default=%i)               \n",dotscale);
   printf(" -dali <list>   show alignments with indices in <list> in dot plot\n");
@@ -525,6 +530,7 @@ void ProcessArguments(int argc, char** argv)
       else if (!strcmp(argv[i],"-dwin") && (i<argc-1)) dotW=atoi(argv[++i]); 
       else if (!strcmp(argv[i],"-dsca") && (i<argc-1)) dotscale=atoi(argv[++i]); 
       else if (!strcmp(argv[i],"-dthr") && (i<argc-1)) dotthr=atof(argv[++i]); 
+      else if (!strncmp(argv[i],"-dothelix", 9)) dothelix=1; 
       else if (!strncmp(argv[i],"-dgrayscale",11)) dotgrayscale=1;
       else if (!strcmp(argv[i],"-dali") && (i<argc-1))  
 	{
@@ -1298,7 +1304,7 @@ int main(int argc, char **argv)
 	    }
 	} // end if (dotali) 
       
-      // Write to dmapfile? (will contain regions aroun alignment traces (clickable in web browser))
+      // Write to dmapfile? (will contain regions around alignment traces (clickable in web browser))
       if (dmapfile) 
 	{
 	  if (v>=2) printf("Printing self-alignment coordinates in png plot to %s\n",dmapfile);
@@ -1340,63 +1346,147 @@ int main(int argc, char **argv)
 
       pngwriter png(dotscale * t->L, dotscale * q->L , 1 ,pngfile);
       if (v>=2) cout<<"Writing dot plot to "<<pngfile<<"\n";
-      for(i=1; i<=q->L; i++)
-	for (j=1; j<=t->L; j++) // Loop through template positions j
-	  {
-	    float dotval=0.0;
-	    sum=0; l=0;
-	    if (par.forward<=1 && !par.realign) 
-	      {
-		for (int w=-dotW; w<=dotW; w++) 
-		  if (i+w>=1 && i+w<=q->L && j+w>=1 && j+w<=t->L) 
-		    {	
-		      sum+=s[i+w][j+w];
-		      l++;
-		    }
-                if (dotgrayscale)
+      if (!dothelix)
+        {
+          for(i=1; i<=q->L; i++)
+            for (j=1; j<=t->L; j++) // Loop through template positions j
+              {
+                float dotval=0.0;
+                sum=0; l=0;
+                if (par.forward<=1 && !par.realign) 
                   {
-		    dotval=fmin(1.0, fmax(0.0, 1.0 - 1.0*sum/l/dotthr));
+                    for (int w=-dotW; w<=dotW; w++) 
+                      if (i+w>=1 && i+w<=q->L && j+w>=1 && j+w<=t->L) 
+                        {	
+                          sum+=s[i+w][j+w];
+                          l++;
+                        }
+                    if (dotgrayscale)
+                      {
+                        dotval=fmin(1.0, fmax(0.0, 1.0 - 1.0*sum/l/dotthr));
+                      }
+                    else
+                      {
+                        dotval=0.0;
+                      }
                   }
+                else 
+                  {
+                    sum = hit.B_MM[i][j];
+                    dotval = fmax(0.0, 1.0 - 1.0*sum/dotthr); 
+                    l=1; 
+
+                  }
+
+                if (i==j && hit.self) {b=r=g=0.0;} 
+                else if (Nstochali && alisto[i][j]) {r=b=1-0.9*alisto[i][j]; g=1;}
+                else if ((sum<=0.05 && par.realign) || (!dotgrayscale && sum<=dotthr*l && !par.realign))
+                  {
+                    if (dotali && ali[i][j]) {r=g=1-dotsat; b=1.0;}
+                    else 
+                      {
+                        // Score below threshold
+                        r=g=b=1.0;
+                        g -= dotsat/3*(0.7*(!(i%10) || !(j%10)) + (!(i%50) || !(j%50)) + (!(i%100) || !(j%100)));
+                        b -= dotsat/3*(0.7*(!(i%10) || !(j%10)) + (!(i%50) || !(j%50)) + (!(i%100) || !(j%100)));
+                      }
+                  }	    
                 else
                   {
-		    dotval=0.0;
+                    // Score above threshold
+                    if (dotali && ali[i][j]) {r=g=0.0; b=1.0;} 
+                    else r=g=b=dotval;
                   }
-	      }
-	    else 
-	      {
-		sum = hit.B_MM[i][j];
-		dotval = fmax(0.0, 1.0 - 1.0*sum/dotthr); 
-		l=1; 
 
-	      }
-
-	    if (i==j && hit.self) {b=r=g=0.0;} 
-	    else if (Nstochali && alisto[i][j]) {r=b=1-0.9*alisto[i][j]; g=1;}
-	    else if ((sum<=0.05 && par.realign) || (!dotgrayscale && sum<=dotthr*l && !par.realign))
-	      {
-	    	if (dotali && ali[i][j]) {r=g=1-dotsat; b=1.0;}
-	     	else 
-	     	  {
-	     	    // Score below threshold
-	     	    r=g=b=1.0;
-	     	    g -= dotsat/3*(0.7*(!(i%10) || !(j%10)) + (!(i%50) || !(j%50)) + (!(i%100) || !(j%100)));
-	     	    b -= dotsat/3*(0.7*(!(i%10) || !(j%10)) + (!(i%50) || !(j%50)) + (!(i%100) || !(j%100)));
-	     	  }
-	      }	    
-	    else
-	      {
-		// Score above threshold
-		if (dotali && ali[i][j]) {r=g=0.0; b=1.0;} 
-		else r=g=b=dotval;
-	      }
-
-// 	    sum = sum/float(l)*dotthr;
-	    for (int ii=dotscale*(q->L-i)+1; ii<=dotscale*(q->L-i+1); ii++)
-	      for (int jj=dotscale*(j-1)+1; jj<=dotscale*j; jj++)
-		{
-		  png.plot(jj,ii,r,g,b);
-		}
-	  }
+    // 	    sum = sum/float(l)*dotthr;
+                for (int ii=dotscale*(q->L-i)+1; ii<=dotscale*(q->L-i+1); ii++)
+                  for (int jj=dotscale*(j-1)+1; jj<=dotscale*j; jj++)
+                    {
+                      png.plot(jj,ii,r,g,b);
+                    }
+              }
+        }
+      else
+        { // the DotHelix algorithm
+          double sum = 0.0;
+          double sum2 = 0.0;
+          // firstly, caclulate mean and standard deviation of s[][] values
+          for (i=1; i<=q->L; i++)
+            for (j=1; j<=t->L; j++) // Loop through template positions j
+              {
+                float v = s[i][j];
+                sum += v;
+                sum2 += v*v;
+              }
+          int count = q->L * t->L;
+          double D = sqrt((sum2 - sum * sum / count) / count);
+          double M = sum / count;
+          // draw the background (i.e. the grid)
+          for(i=1; i<=q->L; i++)
+            for (j=1; j<=t->L; j++)
+              {
+                r=g=b=1.0;
+                g -= dotsat/3*(0.7*(!(i%10) || !(j%10)) + (!(i%50) || !(j%50)) + (!(i%100) || !(j%100)));
+                b -= dotsat/3*(0.7*(!(i%10) || !(j%10)) + (!(i%50) || !(j%50)) + (!(i%100) || !(j%100)));
+#if 0 // ! dbg
+                if (s[i][j] >= M + 3 * D)
+                  {
+                    r=g=0; b=1.0;
+                  }
+#endif
+                for (int ii=dotscale*(q->L-i)+1; ii<=dotscale*(q->L-i+1); ii++)
+                  for (int jj=dotscale*(j-1)+1; jj<=dotscale*j; jj++)
+                    png.plot(jj,ii,r,g,b);
+              }
+          // ! dbg
+          // fprintf(stderr, "M = %g, D = %g, threshold = %f\n", M, D, dotthr);
+          // then process each diagonal separately and find the segments with the score above the threshold,
+          // where the score is S = (Sum - L * M) / (D * sqrt(L)).
+          for(int d = -t->L + 1; d <= q->L - 1; d++)
+            {
+              // make the diagonal
+              int n = 0;
+              std::vector<double> diag;
+              for(i = d; i < q->L; i++)
+                {
+                  j = i - d;
+                  if (i < 0 || j < 0) continue;
+                  if (j >= t->L) break;
+                  diag.push_back(s[i + 1][j + 1]); // here we use i,j starting from 0
+                  n++;
+                }
+              std::vector<diagonal_segment> arr;
+              find_all_segments(&arr, diag, 0, n - 1, M, D, dotthr);
+              sort_segments(&arr);
+              // draw the found segments
+#if 0
+              // ! dbg
+              fprintf(stderr, "diag %d:\n", d);
+              for(unsigned int k = 0; k < diag.size(); k++)
+                {
+                  fprintf(stderr, "%f ", diag[k]);
+                }
+              fprintf(stderr, "\n");
+#endif
+#if 1
+              for(unsigned int k = 0; k < arr.size(); k++)
+                {
+                  diagonal_segment seg = arr[k];
+                  for (int l = seg.start; l <= seg.end; l++)
+                    {
+                      j = (d >= 0) ? l + 1 : l - d + 1;
+                      i = j + d;
+                      r=g=0; b=1.0;
+                      for (int ii=dotscale*(q->L-i)+1; ii<=dotscale*(q->L-i+1); ii++)
+                        for (int jj=dotscale*(j-1)+1; jj<=dotscale*j; jj++)
+                          png.plot(jj,ii,r,g,b);
+                    }
+                  // ! dbg
+                  // fprintf(stderr, "[%d %d]: %f\n", seg.start, seg.end, seg.value);
+                }
+#endif
+            }
+        }
 
       png.close();
       for (i=0; i<q->L+2; i++) delete[] s[i];

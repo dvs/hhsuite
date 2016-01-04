@@ -20,7 +20,7 @@ ifdef ICC
   OBJECT_LIBS = -openmp
 else # ifndef ICC
   CXX = g++
-  CXXFLAGS = -O3 -Wall -Wno-deprecated -Wno-char-subscripts -fno-strict-aliasing -Wno-vla -fpermissive -I$(CS_DIR) $(BITS_FLAG) -I$(FFINDEX_DIR) -fopenmp
+  CXXFLAGS = -O3 -Wall -Wextra -Wno-unused-parameter -Wno-deprecated -Wno-char-subscripts -fno-strict-aliasing -Wno-vla -fpermissive -I$(CS_DIR) $(BITS_FLAG) -I$(FFINDEX_DIR) -fopenmp
   HHSEARCH_LIBS = -lpthread
   HHBLITS_LIBS = -lpthread -fopenmp
   HHALIGN_LIBS = 
@@ -60,6 +60,12 @@ SOURCES = hhsearch.C hhhitlist.C hhhit.C hhalignment.C hhhmm.C hhmatrices.C hhde
 CS_SOURCES_WITH_APPS = $(filter-out $(wildcard $(CS_DIR)/*test*.cc), $(wildcard $(CS_DIR)/*.cc))
 CS_SOURCES = $(filter-out $(wildcard $(CS_DIR)/*app.cc), $(CS_SOURCES_WITH_APPS))
 CS_OBJECTS = $(patsubst %.cc, %.o, $(CS_SOURCES))
+
+DOTHELIX_HEADERS = dothelix.h
+DOTHELIX_OBJECTS = dothelix.o
+$(DOTHELIX_OBJECTS): dothelix.C $(DOTHELIX_HEADERS)
+	$(CPP) -c $< -o $@
+
 
 HEADERS = hhhitlist.h hhhit.h hhalignment.h hhhmm.h hhfullalignment.h hhfullalignment.h hash.h list.h
 
@@ -106,8 +112,8 @@ hhmake: hhmake.C $(SOURCES) $(HEADERS) $(CS_OBJECTS)
 hhmake_static: hhmake.C $(SOURCES) $(HEADERS) $(CS_OBJECTS)
 	$(CPP) -static hhmake.C -o hhmake $(CS_OBJECTS)
 
-hhalign: hhalign.C $(SOURCES) $(HEADERS) $(CS_OBJECTS)
-	 $(CPP) hhalign.C -o hhalign $(CS_OBJECTS) $(HHALIGN_LIBS)
+hhalign: hhalign.C $(SOURCES) $(HEADERS) $(CS_OBJECTS) $(DOTHELIX_HEADERS) $(DOTHELIX_OBJECTS)
+	 $(CPP) hhalign.C -o hhalign $(CS_OBJECTS) $(DOTHELIX_OBJECTS) $(HHALIGN_LIBS)
 
 hhalign_static: hhalign.C $(SOURCES) $(HEADERS) $(CS_OBJECTS)
 	 $(CPP) -static hhalign.C -o hhalign $(CS_OBJECTS) $(HHALIGN_LIBS)
