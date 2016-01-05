@@ -4,7 +4,42 @@
 
 #include "dothelix.h"
 
-int check_by_full_search = 0;
+/*
+ * This module presents the DotHelix algorithm that is used for
+ * searching of the diagonal segments with maximal score:
+ *
+ *     S = (Sum - L * M) / (D * sqrt(L))
+ *
+ * where
+ *
+ *     L - the segment's length;
+ *     Sum - the sum of the segment's elements;
+ *     M - mean of the matrix elements;
+ *     D - standard deviation of the matrix elements.
+ *
+ * Also the threshold for the minimal allowed score can be supplied
+ * (see the find_all_segments() procedure).
+ *
+ * The algorithm is based on the article [1] and implements the heuristics
+ * which speeds up the search significantly.
+ * The heuristics can be disabled for the testing purposes
+ * (see check_by_full_search global variable below).
+ * This module was coded by Dmitry Samborskiy (samborsky_d@yahoo.com),
+ * member of Moscow-Leiden bioinformatic research group "MoBiLe".
+ *
+ * References:
+ *
+ * 1. Leontovich A.M., Brodsky L.I., Gorbalenya A.E.,
+ * "Compile of a complete map of local similarity for two biopolymers
+ * (DotHelix program of the GenBee package)",
+ * ISSN 0233-7657, Biopolymers and cell, Kiev, USSR, 1990, Vol.6, No.6
+ *
+ * 1.RUS А.М. Леонтович, Л.И. Бродский, А.Е. Горбаленя,
+ * "Построение полной карты локального сходства двух биополимеров (программа DotHelix пакета GenBee)",
+ * ISSN 0233-7657 Биополимеры и клетка, Киев, СССР, 1990, Т 6, №6
+ */
+
+int check_by_full_search = 0; // enable to test if DotHelix heuristics lost any segment (it will be 2-10x slower)
 
 static inline double measure(double sum, int l, double M, double D)
 {
@@ -53,8 +88,6 @@ static diagonal_segment find_max_segment(std::vector<double> v, int start0, int 
     result.start = result.end = -1;
     result.value = 0.0;
 
-    //! dbg
-    // printf("start = %d, end = %d\n", start, end);
     if (start > end) {
         return result;
     }
@@ -110,8 +143,6 @@ static diagonal_segment find_max_segment(std::vector<double> v, int start0, int 
     }
 
     if (split) {
-        //! dbg
-        // printf("first_negative_index = %d, max_positive_index = %d\n", first_negative_index, max_positive_index);
         diagonal_segment result1 = find_max_segment(v, start1, end1, M, D);
         diagonal_segment result2 = find_max_segment(v, start2, end2, M, D);
         if (result1.value > result2.value) {
@@ -133,8 +164,6 @@ static diagonal_segment find_max_segment_reverse(std::vector<double> v, int star
     result.start = result.end = -1;
     result.value = 0.0;
 
-    //! dbg
-    // printf("REVERSE: start = %d, end = %d\n", start, end);
     if (start > end) {
         return result;
     }
@@ -190,8 +219,6 @@ static diagonal_segment find_max_segment_reverse(std::vector<double> v, int star
     }
 
     if (split) {
-        //! dbg
-        // printf("first_negative_index = %d, max_positive_index = %d\n", first_negative_index, max_positive_index);
         diagonal_segment result1 = find_max_segment_reverse(v, start1, end1, M, D);
         diagonal_segment result2 = find_max_segment_reverse(v, start2, end2, M, D);
         if (result1.value > result2.value) {

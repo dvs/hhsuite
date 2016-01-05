@@ -138,6 +138,9 @@ float** Sstruc=NULL;         // structure matrix which can be added to log odds 
 /////////////////////////////////////////////////////////////////////////////////////
 // Help functions
 /////////////////////////////////////////////////////////////////////////////////////
+void help_dothelix();
+int help_all_called = 0;
+
 void help()
 {
   printf("\n");
@@ -187,7 +190,7 @@ void help()
   printf(" -dsca <int>   if value <= 20: size of dot plot unit box in pixels           \n");
   printf("               if value > 20: maximum dot plot size in pixels (default=%i)   \n",dotscale);
   printf(" -dwin <int>   average score over window [i-W..i+W] (for -norealign) (def=%i)\n",dotW);
-  printf(" -dothelix     enables the DotHelix algorithm for the dotplot (then -dwin is irrelevant)\n");
+  printf(" -dothelix     enables the DotHelix algorithm for the dotplot (see 'hhalign -h dothelix')\n");
   printf(" -dali <list>  show alignments with indices in <list> in dot plot            \n");
   printf("               <list> = <index1> ... <indexN>  or  <list> = all              \n");
   printf("\n");         
@@ -228,12 +231,16 @@ void help()
   printf("\n");
   printf("Example: %s -i T0187.a3m -t d1hz4a_.hhm -png T0187pdb.png \n",program_name);
   cout<<endl;
-//   printf("More help:                                                         \n");
-//   printf(" -h out        output options                                      \n");
-//   printf(" -h hmm        options for building HMM from multiple alignment    \n");
-//   printf(" -h gap        options for setting gap penalties                   \n");
-//   printf(" -h ali        options for HMM-HMM alignment                       \n");
-//   printf(" -h all        all options \n");
+  if (!help_all_called)
+    {
+      printf("More help:                                                         \n");
+      printf(" -h out        output options                                      \n");
+      printf(" -h hmm        options for building HMM from multiple alignment    \n");
+      printf(" -h gap        options for setting gap penalties                   \n");
+      printf(" -h ali        options for HMM-HMM alignment                       \n");
+      printf(" -h dothelix   help for DotHelix dotplot output algorithm          \n");
+      printf(" -h all        all options \n");
+    }
 }
 
 void help_out()
@@ -268,8 +275,8 @@ void help_out()
   printf("Dotplot options:\n");
   printf(" -dwin int      average score in dotplot over window [i-W..i+W] (def=%i)   \n",dotW);
   printf(" -dthr float    score threshold for dotplot (default=%.2f)                 \n",dotthr);
-  printf(" -dothelix     enables the DotHelix algorithm for the dotplot (then -dwin is irrelevant)\n");
-  printf(" -dgrayscale   draw dotmap in grayscale, use -dthr as max. value (for -norealign, it is off by default)\n");
+  printf(" -dothelix      enables the DotHelix algorithm for the dotplot (see 'hhalign -h dothelix')\n");
+  printf(" -dgrayscale    draw dotmap in grayscale, use -dthr as max. value (for -norealign, it is off by default)\n");
   printf(" -dsca int      size of dot plot box in pixels  (default=%i)               \n",dotscale);
   printf(" -dali <list>   show alignments with indices in <list> in dot plot\n");
   printf("                <list> = <index1> ... <indexN>  or  <list> = all              \n");
@@ -355,8 +362,43 @@ void help_ali()
   printf(" -ssa  [0,1]    ss confusion matrix = (1-ssa)*I + ssa*psipred-confusion-matrix [def=%-.2f)\n",par.ssa);
 }
 
+void help_dothelix()
+{
+  printf("\n");
+  printf("DotHelix dotplot algorithm:\n");
+  printf("\n");
+  printf(" -dothelix     enables the DotHelix algorithm for the dotplot\n");
+  printf(" -dh-minlen    set the minimal length for the segments [def=0, no limit]\n");
+  printf("\n");
+  printf("In this mode the dotplot PNG picture is drawn with the DotHelix algorithm (see [1]).\n");
+  printf("This algorithm solves the task of finding all the diagonal segments with score above\n");
+  printf("the specified thresold, where the score is defined as a normalised deviation from\n");
+  printf("the observed mean value:\n");
+  printf("\n");
+  printf("   S = (Sum - L * M) / (D * sqrt(L))\n");
+  printf("\n");
+  printf("where\n");
+  printf("\n");
+  printf("    L - the segment's length;\n");
+  printf("    Sum - the sum of the segment's elements;\n");
+  printf("    M - mean of the matrix elements, which are the comprised of\n");
+  printf("        the AA-to-AA and SS-to-SS similarity scores and the score offset:\n");
+  printf("        s[i][j] = hit.Score(q->p[i],t->p[j]) + hit.ScoreSS(q,t,i,j) + par.shift;\n");
+  printf("    D - standard deviation of the matrix elements.\n");
+  printf("The threshold value is taken from the -dthr option.\n");
+  printf("Window length option (-dwin) value is irrelevant when -dothelix mode is enabled.\n");
+  printf("\n\nThe DotHelix algorithm described in the article [1] introduces heuristics\n");
+  printf("that speeds up the search significantly.\n");
+  printf("\nReferences:\n");
+  printf("\n1. Leontovich A.M., Brodsky L.I., Gorbalenya A.E.,\n");
+  printf("\"Compile of a complete map of local similarity for two biopolymers\n");
+  printf("(DotHelix program of the GenBee package)\",\n");
+  printf("ISSN 0233-7657, Biopolymers and cell, Kiev, USSR, 1990, Vol.6, No.6\n\n");
+}
+
 void help_all()
 {
+  help_all_called = 1;
   help();
   help_out();
   help_hmm();
@@ -365,6 +407,7 @@ void help_all()
   printf(" -calm 0-3      empirical score calibration of 0:query 1:template 2:both (def=off)\n");
   printf("\n");
   printf("Default options can be specified in './.hhdefaults' or '~/.hhdefaults'\n");
+  help_dothelix();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -493,6 +536,7 @@ void ProcessArguments(int argc, char** argv)
 	  if (!strcmp(argv[i],"hmm")) {help_hmm(); exit(0);} 
 	  if (!strcmp(argv[i],"gap")) {help_gap(); exit(0);} 
 	  if (!strcmp(argv[i],"ali")) {help_ali(); exit(0);} 
+	  if (!strcmp(argv[i],"dothelix")) {help_dothelix(); exit(0);} 
 	  if (!strcmp(argv[i],"all")) {help_all(); exit(0);} 
 	  else {help(); exit(0);}
 	}
@@ -1430,18 +1474,10 @@ int main(int argc, char **argv)
                 r=g=b=1.0;
                 g -= dotsat/3*(0.7*(!(i%10) || !(j%10)) + (!(i%50) || !(j%50)) + (!(i%100) || !(j%100)));
                 b -= dotsat/3*(0.7*(!(i%10) || !(j%10)) + (!(i%50) || !(j%50)) + (!(i%100) || !(j%100)));
-#if 0 // ! dbg
-                if (s[i][j] >= M + 3 * D)
-                  {
-                    r=g=0; b=1.0;
-                  }
-#endif
                 for (int ii=dotscale*(q->L-i)+1; ii<=dotscale*(q->L-i+1); ii++)
                   for (int jj=dotscale*(j-1)+1; jj<=dotscale*j; jj++)
                     png.plot(jj,ii,r,g,b);
               }
-          // ! dbg
-          // fprintf(stderr, "M = %g, D = %g, threshold = %f\n", M, D, dotthr);
           // then process each diagonal separately and find the segments with the score above the threshold,
           // where the score is S = (Sum - L * M) / (D * sqrt(L)).
           for(int d = -t->L + 1; d <= q->L - 1; d++)
@@ -1461,16 +1497,6 @@ int main(int argc, char **argv)
               find_all_segments(&arr, diag, 0, n - 1, M, D, dotthr);
               sort_segments(&arr);
               // draw the found segments
-#if 0
-              // ! dbg
-              fprintf(stderr, "diag %d:\n", d);
-              for(unsigned int k = 0; k < diag.size(); k++)
-                {
-                  fprintf(stderr, "%f ", diag[k]);
-                }
-              fprintf(stderr, "\n");
-#endif
-#if 1
               for(unsigned int k = 0; k < arr.size(); k++)
                 {
                   diagonal_segment seg = arr[k];
@@ -1487,13 +1513,8 @@ int main(int argc, char **argv)
                         for (int jj=dotscale*(j-1)+1; jj<=dotscale*j; jj++)
                           png.plot(jj,ii,r,g,b);
                     }
-                  // ! dbg
-                  // fprintf(stderr, "[%d %d]: %f\n", seg.start, seg.end, seg.value);
                 }
-#endif
             }
-            // ! dbg
-            // fprintf(stderr, "DotHelix: Done.\n");
         }
 
       png.close();
