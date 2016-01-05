@@ -1478,6 +1478,21 @@ int main(int argc, char **argv)
                   for (int jj=dotscale*(j-1)+1; jj<=dotscale*j; jj++)
                     png.plot(jj,ii,r,g,b);
               }
+          // draw the alignment(s)
+          if (dotali)
+            {
+              for(i=1; i<=q->L; i++)
+                for (j=1; j<=t->L; j++)
+                  {
+                    if (ali[i][j])
+                      {
+                        r=g=1-dotsat; b=1.0;
+                        for (int ii=dotscale*(q->L-i)+1; ii<=dotscale*(q->L-i+1); ii++)
+                          for (int jj=dotscale*(j-1)+1; jj<=dotscale*j; jj++)
+                            png.plot(jj,ii,r,g,b);
+                      }
+                  }
+            }
           // then process each diagonal separately and find the segments with the score above the threshold,
           // where the score is S = (Sum - L * M) / (D * sqrt(L)).
           for(int d = -t->L + 1; d <= q->L - 1; d++)
@@ -1508,7 +1523,8 @@ int main(int argc, char **argv)
                     {
                       j = (d >= 0) ? l + 1 : l - d + 1;
                       i = j + d;
-                      r=g=0; b=1.0;
+                      r=g=b=0;
+                      if (ali[i][j]) b = 1.0;
                       for (int ii=dotscale*(q->L-i)+1; ii<=dotscale*(q->L-i+1); ii++)
                         for (int jj=dotscale*(j-1)+1; jj<=dotscale*j; jj++)
                           png.plot(jj,ii,r,g,b);
