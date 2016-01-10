@@ -1524,7 +1524,7 @@ int main(int argc, char **argv)
                       j = (d >= 0) ? l + 1 : l - d + 1;
                       i = j + d;
                       r=g=b=0;
-                      if (ali[i][j]) b = 1.0;
+                      if (dotali && ali[i][j]) b = 1.0;
                       for (int ii=dotscale*(q->L-i)+1; ii<=dotscale*(q->L-i+1); ii++)
                         for (int jj=dotscale*(j-1)+1; jj<=dotscale*j; jj++)
                           png.plot(jj,ii,r,g,b);
