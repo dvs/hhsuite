@@ -10,10 +10,3 @@ issue-*
 *.debug
 *.out
 *.pl
-hhblits
-hhsearch
-hhmake
-hhalign
-hhfilter
-hhconsensus
-cstranslate
