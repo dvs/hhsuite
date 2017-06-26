@@ -282,6 +282,7 @@ void help(char all=0)
   if (all) {
   printf(" -ssw  [0,1]    weight of ss score compared to column score (def=%-.2f)     \n",par.ssw);
   printf(" -ssa  [0,1]    SS substitution matrix = (1-ssa)*I + ssa*full-SS-substition-matrix [def=%-.2f)\n",par.ssa);
+  printf(" -noqlen        assume query/target lengths = hit lengths when p-,e-value, and probab. are calculated\n");
   printf("\n");
   printf("Gap cost options:                                                                      \n");
   printf(" -gapb [0,inf[  Transition pseudocount admixture (def=%-.2f)                           \n",par.gapb);
@@ -507,6 +508,7 @@ void ProcessArguments(int argc, char** argv)
       else if (!strcmp(argv[i],"-ssw") && (i<argc-1)) par.ssw=atof(argv[++i]);
       else if (!strcmp(argv[i],"-ssw_mac") && (i<argc-1)) par.ssw_realign=atof(argv[++i]);
       else if (!strcmp(argv[i],"-ssa") && (i<argc-1)) par.ssa=atof(argv[++i]);
+      else if (!strcmp(argv[i],"-noqlen")) par.calc_pvalue_using_hit_len = 1;
       else if (!strcmp(argv[i],"-realign")) par.realign=1;
       else if (!strcmp(argv[i],"-norealign")) par.realign=0;
       else if (!strcmp(argv[i],"-forward")) par.forward=1;

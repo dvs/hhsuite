@@ -360,6 +360,7 @@ void help_ali()
   printf("                2:ss scoring during alignment                              \n");
   printf(" -ssw  [0,1]    weight of ss score compared to column score (def=%-.2f)    \n",par.ssw);
   printf(" -ssa  [0,1]    ss confusion matrix = (1-ssa)*I + ssa*psipred-confusion-matrix [def=%-.2f)\n",par.ssa);
+  printf(" -noqlen        assume query/target lengths = hit lengths when p-,e-value, and probab. are calculated\n");
 }
 
 void help_dothelix()
@@ -645,6 +646,7 @@ void ProcessArguments(int argc, char** argv)
       else if (!strcmp(argv[i],"-ssm") && (i<argc-1)) par.ssm=atoi(argv[++i]);
       else if (!strcmp(argv[i],"-ssw") && (i<argc-1)) par.ssw=atof(argv[++i]);
       else if (!strcmp(argv[i],"-ssa") && (i<argc-1)) par.ssa=atof(argv[++i]);
+      else if (!strcmp(argv[i],"-noqlen")) par.calc_pvalue_using_hit_len = 1;
       else if (!strncmp(argv[i],"-glo",3)) {par.loc=0; if (par.mact>0.3 && par.mact<0.301) {par.mact=0;} }
       else if (!strncmp(argv[i],"-loc",3)) par.loc=1;
       else if (!strncmp(argv[i],"-alt",4) && (i<argc-1)) par.altali=atoi(argv[++i]);

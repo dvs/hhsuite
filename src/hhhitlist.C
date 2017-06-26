@@ -838,8 +838,15 @@ void HitList::CalculatePvalues(HMM* q)
 
       if (par.loc)
 	{
-	  lamda = lamda_NN( log(q->L)/log1000, log(hit.L)/log1000, q->Neff_HMM/10.0, hit.Neff_HMM/10.0 ); 
-	  mu    =    mu_NN( log(q->L)/log1000, log(hit.L)/log1000, q->Neff_HMM/10.0, hit.Neff_HMM/10.0 ); 
+          double query_log_len = log(q->L)/log1000;
+          double hit_log_len = log(hit.L)/log1000;
+          if (par.calc_pvalue_using_hit_len)
+            {
+              query_log_len = log(hit.i2 - hit.i1 + 1)/log1000;
+              hit_log_len = log(hit.j2 - hit.j1 + 1)/log1000;
+            }
+	  lamda = lamda_NN( query_log_len, hit_log_len, q->Neff_HMM/10.0, hit.Neff_HMM/10.0 );
+	  mu    =    mu_NN( query_log_len, hit_log_len, q->Neff_HMM/10.0, hit.Neff_HMM/10.0 );
 // 	  if (v>=3 && nhits++<20) 
 // 	     printf("hit=%-10.10s Lq=%-4i  Lt=%-4i  Nq=%5.2f  Nt=%5.2f  =>  lamda=%-6.3f  mu=%-6.3f\n",hit.name,q->L,hit.L,q->Neff_HMM,hit.Neff_HMM,lamda,mu);
 	}

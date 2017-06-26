@@ -177,6 +177,7 @@ public:
 
   float egq;              // penalty for end gaps when query not fully covered
   float egt;              // penalty for end gaps when template not fully covered
+  int calc_pvalue_using_hit_len; // assume query/target lengths = query/target hit lengths when p-,e-value, and probab. are calculated, see CalculatePvalues()
 
   float Neff;
 
@@ -410,6 +411,7 @@ void Parameters::SetDefaults()
 
   egq=0.0f;                // no charge for end gaps as default
   egt=0.0f;                // no charge for end gaps as default
+  calc_pvalue_using_hit_len = 0;
 
   ssgap=0;                 // 1: add secondary structure-dependent gap penalties  0:off
   ssgapd=1.0f;             // secondary structure-dependent gap-opening penalty (per residue)
