@@ -55,8 +55,8 @@ inline int iround(double x) {return int(floor(x+0.5));}
 inline double fmean(double x, double y, double d) { return pow( (pow(x,d)+pow(y,d))/2 ,1./d);}
 
 // log base 2
-inline float log2(float x)  {return (x<=0? (float)(-100000):1.442695041*log(x));}
-inline float log10(float x) {return (x<=0? (float)(-100000):0.434294481*log(x));}
+inline float safe_log2(float x)  {return (x<=0? (float)(-100000):1.442695041*log(x));}
+inline float safe_log10(float x) {return (x<=0? (float)(-100000):0.434294481*log(x));}
 
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -376,7 +376,7 @@ inline float NormalizeToX(float* array, int length, float x, float* def_array=NU
 inline char* sprintg(float val, int w)
 {
   static char str[100];
-  float log10val = log10(fabs(val));
+  float log10val = safe_log10(fabs(val));
   int neg = (val<0? 1: 0);
   if (log10val >= w-neg-1 || -log10val > 3)
     {

@@ -377,7 +377,7 @@ void SetSubstitutionMatrix()
   //Precompute matrix R for amino acid pseudocounts:
   for (a=0; a<20; ++a)
     for (b=0; b<20; ++b)   
-      S[a][b] = log2(R[a][b]/pb[a]); // S[a][b] = log2(P(a,b)/P(a)/P(b))
+      S[a][b] = safe_log2(R[a][b]/pb[a]); // S[a][b] = log2(P(a,b)/P(a)/P(b))
   
   // Evaluate sequence identity underlying substitution matrix
   if (v>=3)
@@ -387,11 +387,11 @@ void SetSubstitutionMatrix()
       float entropy_pb=0.0f;
       float mut_info=0.0f;
       for (a=0; a<20; ++a) id+=P[a][a];
-      for (a=0; a<20; ++a) entropy_pb-=pb[a]*log2(pb[a]);
+      for (a=0; a<20; ++a) entropy_pb-=pb[a]*safe_log2(pb[a]);
       for (a=0; a<20; ++a) 
 	  for (b=0; b<20; ++b) 
 	    {
-	      entropy-=P[a][b]*log2(R[a][b]);
+	      entropy-=P[a][b]*safe_log2(R[a][b]);
 	      mut_info += P[a][b]*S[a][b];
 	    }
       
@@ -470,7 +470,7 @@ void SetSecStrucSubstitutionMatrix()
 	{
 
 	  P73[A][B][cf] = 1.-par.ssa + par.ssa*Ppred[cf*NSSPRED*NDSSP + B*NDSSP + A];
-	  S73[A][B][cf] = log2(P73[A][B][cf]);
+	  S73[A][B][cf] = safe_log2(P73[A][B][cf]);
 	}
 
   for (B=0; B<NSSPRED; B++)
@@ -481,7 +481,7 @@ void SetSecStrucSubstitutionMatrix()
 	    sum=0;
 	    for (A=1; A<NDSSP; A++)
 	      sum += P73[A][B][cf] * P73[A][BB][ccf] * Pobs[A];
-	    S33[B][cf][BB][ccf] = log2(sum);
+	    S33[B][cf][BB][ccf] = safe_log2(sum);
 	  }  
 }
 

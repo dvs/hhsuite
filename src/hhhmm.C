@@ -1284,7 +1284,7 @@ int HMM::ReadHMMer3(FILE* dbf, char* filestr, char* header_line)
 
 	  ptr = strscn(line);
 	  for (a=0; a<=D2D && ptr; ++a)
-	    tr[0][a] = log2((float) exp(-1.0*strflta(ptr,99999))); //store transition probabilites as log2 values
+	    tr[0][a] = safe_log2((float) exp(-1.0*strflta(ptr,99999))); //store transition probabilites as log2 values
 	  // strinta returns next integer in string and puts ptr to first char
 	  // after the integer. Returns -99999 if '*' is found.
 	  // ptr is set to 0 if no integer is found after ptr.
@@ -1429,7 +1429,7 @@ int HMM::ReadHMMer3(FILE* dbf, char* filestr, char* header_line)
              
               ptr=line;
               for (a=0; a<=D2D && ptr; ++a)
-                tr[i][a] = log2((float) exp(-1.0*strflta(ptr,99999))); //store transition prob's as log2-values
+                tr[i][a] = safe_log2((float) exp(-1.0*strflta(ptr,99999))); //store transition prob's as log2-values
               if (!ptr) return Warning(dbf,line,name);
               if (v>=4)
                 {

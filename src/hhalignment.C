@@ -1871,9 +1871,9 @@ void Alignment::Amino_acid_frequencies_and_transitions_from_M_state(HMM* q, char
         } // end for(k)
       // Normalize and take log
       sum = q->tr[i][M2M]+q->tr[i][M2I]+q->tr[i][M2D]+FLT_MIN;
-      q->tr[i][M2M]=log2(q->tr[i][M2M]/sum);
-      q->tr[i][M2I]=log2(q->tr[i][M2I]/sum);
-      q->tr[i][M2D]=log2(q->tr[i][M2D]/sum);
+      q->tr[i][M2M]=safe_log2(q->tr[i][M2M]/sum);
+      q->tr[i][M2I]=safe_log2(q->tr[i][M2I]/sum);
+      q->tr[i][M2D]=safe_log2(q->tr[i][M2D]/sum);
 
 //       for (k=0; k<N_in; ++k) if (in[k]) w[k][i]=wi[k];
    }
@@ -1907,7 +1907,7 @@ void Alignment::Amino_acid_frequencies_and_transitions_from_M_state(HMM* q, char
         }
       q->Neff_HMM/=L;
       float Nlim=fmax(10.0,q->Neff_HMM+1.0);    // limiting Neff
-      float scale=log2((Nlim-q->Neff_HMM)/(Nlim-1.0)); // for calculating Neff for those seqs with inserts at specific pos
+      float scale=safe_log2((Nlim-q->Neff_HMM)/(Nlim-1.0)); // for calculating Neff for those seqs with inserts at specific pos
       for (i=1; i<=L; ++i)
         {
           float w_M=-1.0/N_filtered;
@@ -1971,7 +1971,7 @@ void Alignment::Transitions_from_I_state(HMM* q, char* in)
     {
       for (k=0; k<N_in; ++k) wi[k]=wg[k];
       Nlim=fmax(10.0,q->Neff_HMM+1.0);    // limiting Neff
-      scale=log2((Nlim-q->Neff_HMM)/(Nlim-1.0)); // for calculating Neff for those seqs with inserts at specific pos
+      scale=safe_log2((Nlim-q->Neff_HMM)/(Nlim-1.0)); // for calculating Neff for those seqs with inserts at specific pos
     }
 
   // Initialization
@@ -2103,8 +2103,8 @@ void Alignment::Transitions_from_I_state(HMM* q, char* in)
 
       // Normalize and take log
       sum = q->tr[i][I2M]+q->tr[i][I2I];
-      q->tr[i][I2M]=log2(q->tr[i][I2M]/sum);
-      q->tr[i][I2I]=log2(q->tr[i][I2I]/sum);
+      q->tr[i][I2M]=safe_log2(q->tr[i][I2M]/sum);
+      q->tr[i][I2I]=safe_log2(q->tr[i][I2I]/sum);
 
    }
   // end loop through alignment columns i
@@ -2164,7 +2164,7 @@ void Alignment::Transitions_from_D_state(HMM* q, char* in)
     {
       for (k=0; k<N_in; ++k) wi[k]=wg[k];
       Nlim=fmax(10.0,q->Neff_HMM+1.0);    // limiting Neff
-      scale=log2((Nlim-q->Neff_HMM)/(Nlim-1.0)); // for calculating Neff for those seqs with dels at specific pos
+      scale=safe_log2((Nlim-q->Neff_HMM)/(Nlim-1.0)); // for calculating Neff for those seqs with dels at specific pos
     }
 
   // Initialization
@@ -2309,8 +2309,8 @@ void Alignment::Transitions_from_D_state(HMM* q, char* in)
 
       // Normalize and take log
       sum = q->tr[i][D2M]+q->tr[i][D2D];
-      q->tr[i][D2M]=log2(q->tr[i][D2M]/sum);
-      q->tr[i][D2D]=log2(q->tr[i][D2D]/sum);
+      q->tr[i][D2M]=safe_log2(q->tr[i][D2M]/sum);
+      q->tr[i][D2D]=safe_log2(q->tr[i][D2D]/sum);
 
    }
   // end loop through alignment columns i

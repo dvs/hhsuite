@@ -1041,7 +1041,7 @@ int main(int argc, char **argv)
               else
                 Pstruc[i][j]=fmax(pow(f,par.wstruc),PMIN);
 //            printf("%10.2E ",f);
-              Sstruc[i][j] = par.wstruc * log2(f);
+              Sstruc[i][j] = par.wstruc * safe_log2(f);
             }
 //        printf("\n");
         }

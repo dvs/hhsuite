@@ -751,8 +751,8 @@ void Hit::Forward(HMM* q, HMM* t, float** Pstruc)
     }
 
   // Calculate log2(P_forward)
-  score = log2(Pforward)-10.0f;
-  for (i=1; i<=q->L+1; ++i) score -= log2(scale[i]);
+  score = safe_log2(Pforward)-10.0f;
+  for (i=1; i<=q->L+1; ++i) score -= safe_log2(scale[i]);
   //   state = MM;
   
   if (par.loc) 
