@@ -61,11 +61,6 @@ CS_SOURCES_WITH_APPS = $(filter-out $(wildcard $(CS_DIR)/*test*.cc), $(wildcard 
 CS_SOURCES = $(filter-out $(wildcard $(CS_DIR)/*app.cc), $(CS_SOURCES_WITH_APPS))
 CS_OBJECTS = $(patsubst %.cc, %.o, $(CS_SOURCES))
 
-DOTHELIX_HEADERS = dothelix.h
-DOTHELIX_OBJECTS = dothelix.o
-$(DOTHELIX_OBJECTS): dothelix.C $(DOTHELIX_HEADERS)
-	$(CPP) -c $< -o $@
-
 
 HEADERS = hhhitlist.h hhhit.h hhalignment.h hhhmm.h hhfullalignment.h hhfullalignment.h hash.h list.h
 
@@ -76,6 +71,11 @@ TARGETS_VALGRIND = hhblits_valgrind hhsearch_valgrind hhalign_valgrind
 all: $(TARGETS)
 
 all_static: $(TARGETS_STATIC)
+
+DOTHELIX_HEADERS = dothelix.h
+DOTHELIX_OBJECTS = dothelix.o
+$(DOTHELIX_OBJECTS): dothelix.C $(DOTHELIX_HEADERS)
+	$(CPP) -c $< -o $@
 
 all_valgrind: $(TARGETS_VALGRIND)
 
