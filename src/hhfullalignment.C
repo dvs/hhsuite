@@ -259,13 +259,26 @@ void FullAlignment::PrintHHR(FILE* outf, Hit& hit)
 	  fprintf(outf,"\n");
 	}
 
+      // Determine coordinate field width
+      int digits = 4;
+      int max_pos = 10000;
+      for (k=0; k<qa->n; k++)
+        {
+          if (k==qa->nss_dssp || k==qa->nsa_dssp || k==qa->nss_pred || k==qa->nss_conf || k==qa->ncons) continue;
+          while (lq[k] >= max_pos)
+            {
+              max_pos = 10 * max_pos;
+              digits++;
+            }
+        }
+
       // Print query sequences
       for (k=0; k<qa->n; k++)
 	{
  	  if (k==qa->nss_dssp || k==qa->nsa_dssp || k==qa->nss_pred || k==qa->nss_conf || k==qa->ncons) continue;
 	  strmcpy(namestr,qa->sname[k],NAMELEN-1);
 	  strcut(namestr);
-	  fprintf(outf,"Q %-*.*s %4i ",NLEN,NLEN,namestr,lq[k]);
+	  fprintf(outf,"Q %-*.*s %*i ",NLEN,NLEN,namestr,digits,lq[k]);
 	  for (h=hh; h<imin(hh+par.aliwidth,qa->pos-1); h++) 
 	    {fprintf(outf,"%1c",qa->s[k][h]); lq[k]+=WordChr(qa->s[k][h]);}  //WordChr() returns 1 if a-z or A-Z; 0 otherwise
 	  fprintf(outf," %4i (%i)\n",lq[k]-1,qa->l[k][qa->L+1]);
@@ -277,7 +290,7 @@ void FullAlignment::PrintHHR(FILE* outf, Hit& hit)
 	  k=qa->ncons; 
 	  strmcpy(namestr,qa->sname[k],NAMELEN-1);
 	  strcut(namestr);
-	  fprintf(outf,"Q %-*.*s %4i ",NLEN,NLEN,namestr,iq);
+	  fprintf(outf,"Q %-*.*s %*i ",NLEN,NLEN,namestr,digits,iq);
 	  for (h=hh; h<imin(hh+par.aliwidth,qa->pos-1); h++) 
 	    {
 	      if (qa->s[k][h]=='x') qa->s[k][h]='~'; 
@@ -289,7 +302,7 @@ void FullAlignment::PrintHHR(FILE* outf, Hit& hit)
 
 
       // Print symbols representing the score
-      fprintf(outf,"  %*.*s      ",NLEN,NLEN," ");
+      fprintf(outf,"  %*.*s %*.*s ",NLEN,NLEN," ",digits,digits," ");
       for (h=hh; h<imin(hh+par.aliwidth,qa->pos-1); h++) fprintf(outf,"%1c",symbol[h]);
       fprintf(outf,"\n");
 
@@ -299,7 +312,7 @@ void FullAlignment::PrintHHR(FILE* outf, Hit& hit)
 	  k=ta->ncons; 
 	  strmcpy(namestr,ta->sname[k],NAMELEN-1);
 	  strcut(namestr);
-	  fprintf(outf,"T %-*.*s %4i ",NLEN,NLEN,namestr,jt);
+	  fprintf(outf,"T %-*.*s %*i ",NLEN,NLEN,namestr,digits,jt);
 	  for (h=hh; h<imin(hh+par.aliwidth,ta->pos-1); h++) 
 	    {
 	      if (ta->s[k][h]=='x') ta->s[k][h]='~'; 
@@ -314,7 +327,7 @@ void FullAlignment::PrintHHR(FILE* outf, Hit& hit)
 	  if (k==ta->nss_dssp || k==ta->nsa_dssp || k==ta->nss_pred || k==ta->nss_conf || k==ta->ncons) continue;
 	  strmcpy(namestr,ta->sname[k],NAMELEN-1);
 	  strcut(namestr);
-	  fprintf(outf,"T %-*.*s %4i ",NLEN,NLEN,namestr,lt[k]);
+	  fprintf(outf,"T %-*.*s %*i ",NLEN,NLEN,namestr,digits,lt[k]);
 	  for (h=hh; h<imin(hh+par.aliwidth,ta->pos-1); h++) 
 	    {fprintf(outf,"%1c",ta->s[k][h]); lt[k]+=WordChr(ta->s[k][h]);}  //WordChr() returns 1 if a-z or A-Z; 0 otherwise
 	  fprintf(outf," %4i (%i)\n",lt[k]-1,ta->l[k][ta->L+1]);
@@ -330,7 +343,7 @@ void FullAlignment::PrintHHR(FILE* outf, Hit& hit)
 	  if (k==ta->nss_conf && !par.showconf) continue;
 	  strmcpy(namestr,ta->sname[k],NAMELEN-1);
 	  strcut(namestr);
-	  fprintf(outf,"T %-*.*s      ",NLEN,NLEN,namestr);
+	  fprintf(outf,"T %-*.*s %*.*s ",NLEN,NLEN,namestr,digits,digits," ");
 	  if (k==ta->nss_pred && ta->nss_conf>=0)
 	    for (h=hh; h<imin(hh+par.aliwidth,ta->pos-1); h++) fprintf(outf,"%1c",ta->s[ta->nss_conf][h]<='6' && ta->s[ta->nss_conf][h]>='0'? ta->s[k][h]+32 : ta->s[k][h] );
 	  else 
@@ -341,7 +354,7 @@ void FullAlignment::PrintHHR(FILE* outf, Hit& hit)
       // Print alignment confidence values (posterior probabilities)?
       if (posterior[0]!='\0') 
 	{
-	  fprintf(outf,"%-*.*s        ",NLEN,NLEN,"Confidence                     ");
+	  fprintf(outf,"%-*.*s  %*.*s  ",NLEN,NLEN,"Confidence                     ",digits,digits," ");
 	  for (h=hh; h<imin(hh+par.aliwidth,qa->pos-1); h++) fprintf(outf,"%1c",posterior[h]); 
 	  fprintf(outf,"\n");
 	}
